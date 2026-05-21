@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   ArrowLeft,
   ChevronDown,
@@ -11,7 +11,6 @@ import {
   Plus,
   Minus,
   Home,
-  CheckCircle2,
   Search as SearchIcon,
   X,
   AlertCircle,
@@ -606,9 +605,8 @@ function NewIntegrationPage() {
   ]);
 
   const isPush = type === "Push";
-  const sectionTitles = ["General Details", isPush ? "Configuration" : null, "Destination Configuration", "Field Mapping", "Overview"].filter(Boolean) as string[];
-  // Map logical section index → 1..n display
-  const totalSections = isPush ? 5 : 4;
+  const sectionTitles = ["General Details", isPush ? "Configuration" : null, "Destination Configuration", "Field Mapping"].filter(Boolean) as string[];
+  const totalSections = isPush ? 4 : 3;
 
   // Validation
   const section1Valid = name.trim() && type && category && contact;
@@ -634,7 +632,7 @@ function NewIntegrationPage() {
   const removeRow = (id: string) => setRows((rs) => rs.filter((r) => r.id !== id));
 
   // Section numbering (when push skipped, configuration is omitted)
-  const Sx = isPush ? { general: 1, config: 2, dest: 3, map: 4, over: 5 } : { general: 1, config: 0, dest: 2, map: 3, over: 4 };
+  const Sx = isPush ? { general: 1, config: 2, dest: 3, map: 4 } : { general: 1, config: 0, dest: 2, map: 3 };
 
   const handleSubmit = () => {
     toast.success("Integration created", {
@@ -943,142 +941,12 @@ function NewIntegrationPage() {
           <Button variant="outline" onClick={() => setActive(3)}>
             <ChevronRight className="h-4 w-4 rotate-180" /> Back
           </Button>
-          <Button onClick={() => next(4)} disabled={!section4Valid}>
-            Next <ChevronRight className="h-4 w-4" />
+          <Button onClick={handleSubmit} disabled={!section4Valid}>
+            <Check className="h-4 w-4" />
+            Submit Integration
           </Button>
         </div>
       </SectionCard>
-
-      {/* SECTION 5 — Overview */}
-      <SectionCard
-        index={Sx.over}
-        title="Overview"
-        subtitle="Review your configuration before submitting."
-        status={statusFor(5)}
-        isOpen={active === 5}
-        onEdit={() => setActive(5)}
-      >
-        <div className="mt-4 space-y-4">
-          <OverviewBlock title="General Details" onEdit={() => setActive(1)}>
-            <KV k="Integration Name" v={name} />
-            <KV k="Integration Type" v={type} />
-            <KV k="Category" v={category} />
-            <KV k="Point of Contact" v={contact} />
-            <KV k="Status" v={isActive ? "Active" : "Inactive"} />
-            <KV k="Description" v={description || "—"} full />
-            <KV k="Notes" v={notes || "—"} full />
-          </OverviewBlock>
-
-          {isPush && (
-            <OverviewBlock title="Configuration" onEdit={() => setActive(2)}>
-              <KV k="Entity Type" v={entityType} />
-              <KV k="Same as Calling" v={sameAsCalling ? "Yes" : "No"} />
-              <KV k="Triggers" v={triggers.join(", ") || "—"} />
-              <KV k="Max Attempts" v={String(maxAttempts)} />
-              <KV k="Error Log Email" v={errorEmail} />
-              <KV k="Select Query" v={<pre className="whitespace-pre-wrap font-mono text-xs bg-muted/50 rounded p-2">{query}</pre>} full />
-            </OverviewBlock>
-          )}
-
-          <OverviewBlock title="Destination" onEdit={() => setActive(3)}>
-            <KV k="Integration Action" v={action} />
-            {action === "FTP" && (
-              <>
-                <KV k="Description" v={ftp.description || "—"} />
-                <KV k="File Prefix" v={ftp.prefix || "—"} />
-                <KV k="Inbound" v={ftp.inbound ? `${ftp.inboundUrl} (${ftp.inboundUser})` : "Disabled"} full />
-                <KV k="Outbound" v={ftp.outbound ? `${ftp.outboundUrl} (${ftp.outboundUser})` : "Disabled"} full />
-              </>
-            )}
-            {(action === "HTTP Service" || action === "HTTP Service External") && (
-              <div className="col-span-2 space-y-2">
-                {httpDestinations.map((h, i) => (
-                  <div key={i} className="rounded-md border border-border bg-muted/30 p-3 text-sm">
-                    <div className="font-medium text-foreground mb-1">Destination {i + 1}: {h.description || "—"}</div>
-                    <div className="font-mono text-xs text-muted-foreground">
-                      <span className="text-foreground font-semibold">{h.method}</span> {h.baseUrl}{h.operation ? "/" + h.operation : ""}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </OverviewBlock>
-
-          <OverviewBlock title="Field Mapping" onEdit={() => setActive(4)}>
-            <div className="col-span-2">
-              <div className="text-xs text-muted-foreground mb-2">{mappingType} · {rows.length} fields</div>
-              <div className="rounded-md border border-border overflow-hidden text-sm">
-                <div className="grid grid-cols-[1fr_1fr_100px] bg-muted/50 px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground font-medium">
-                  <div>Third Party</div><div>Optimo Field</div><div className="text-center">Required</div>
-                </div>
-                {rows.map((r) => (
-                  <div key={r.id} className="grid grid-cols-[1fr_1fr_100px] px-3 py-2 border-t border-border">
-                    <div className="font-medium text-foreground">{r.third}</div>
-                    <div className="text-muted-foreground font-mono text-xs">{r.field}</div>
-                    <div className="text-center">
-                      {r.mandatory ? (
-                        <span className="inline-flex items-center gap-1 text-success text-xs font-medium"><CheckCircle2 className="h-3 w-3" />Yes</span>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">No</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </OverviewBlock>
-        </div>
-      </SectionCard>
-
-      {/* Sticky footer */}
-      {active === 5 && (
-        <div className="fixed bottom-0 left-64 right-0 bg-card/95 backdrop-blur border-t border-border px-8 py-4 z-30 animate-in slide-in-from-bottom-2">
-          <div className="max-w-[1100px] mx-auto flex items-center justify-between">
-            <div className="text-sm text-muted-foreground inline-flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-success" />
-              All sections complete — ready to submit.
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => navigate({ to: "/configurations" })}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmit}>
-                <Check className="h-4 w-4" />
-                Submit Integration
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function OverviewBlock({ title, onEdit, children }: { title: string; onEdit: () => void; children: React.ReactNode }) {
-  const [open, setOpen] = useState(true);
-  return (
-    <div className="rounded-lg border border-border bg-card">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <button onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <ChevronDown className={cn("h-4 w-4 transition-transform", !open && "-rotate-90")} />
-          {title}
-        </button>
-        <button onClick={onEdit} className="text-xs font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
-          <Pencil className="h-3 w-3" /> Edit
-        </button>
-      </div>
-      {open && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 p-4 animate-in fade-in-0">{children}</div>
-      )}
-    </div>
-  );
-}
-
-function KV({ k, v, full }: { k: string; v: React.ReactNode; full?: boolean }) {
-  return (
-    <div className={cn(full && "md:col-span-2")}>
-      <div className="text-xs text-muted-foreground">{k}</div>
-      <div className="text-sm text-foreground font-medium mt-0.5 break-words">{v || "—"}</div>
     </div>
   );
 }
