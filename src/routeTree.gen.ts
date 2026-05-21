@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ConfigurationsRouteImport } from './routes/configurations'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ConfigurationsIndexRouteImport } from './routes/configurations.index'
 
 const ConfigurationsRoute = ConfigurationsRouteImport.update({
   id: '/configurations',
@@ -22,31 +23,38 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfigurationsIndexRoute = ConfigurationsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ConfigurationsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/configurations': typeof ConfigurationsRoute
+  '/configurations': typeof ConfigurationsRouteWithChildren
+  '/configurations/': typeof ConfigurationsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/configurations': typeof ConfigurationsRoute
+  '/configurations': typeof ConfigurationsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/configurations': typeof ConfigurationsRoute
+  '/configurations': typeof ConfigurationsRouteWithChildren
+  '/configurations/': typeof ConfigurationsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/configurations'
+  fullPaths: '/' | '/configurations' | '/configurations/'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/configurations'
-  id: '__root__' | '/' | '/configurations'
+  id: '__root__' | '/' | '/configurations' | '/configurations/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ConfigurationsRoute: typeof ConfigurationsRoute
+  ConfigurationsRoute: typeof ConfigurationsRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +73,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/configurations/': {
+      id: '/configurations/'
+      path: '/'
+      fullPath: '/configurations/'
+      preLoaderRoute: typeof ConfigurationsIndexRouteImport
+      parentRoute: typeof ConfigurationsRoute
+    }
   }
 }
 
+interface ConfigurationsRouteChildren {
+  ConfigurationsIndexRoute: typeof ConfigurationsIndexRoute
+}
+
+const ConfigurationsRouteChildren: ConfigurationsRouteChildren = {
+  ConfigurationsIndexRoute: ConfigurationsIndexRoute,
+}
+
+const ConfigurationsRouteWithChildren = ConfigurationsRoute._addFileChildren(
+  ConfigurationsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ConfigurationsRoute: ConfigurationsRoute,
+  ConfigurationsRoute: ConfigurationsRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
