@@ -355,12 +355,12 @@ function SectionCard({
   summary?: React.ReactNode;
   children?: React.ReactNode;
 }) {
+  if (status === "locked") return null;
   return (
     <div
       className={cn(
-        "rounded-xl border bg-card shadow-[var(--shadow-soft)] transition-all overflow-hidden",
-        status === "locked" && "opacity-60",
-        isOpen ? "border-primary/40" : "border-border",
+        "rounded-xl border bg-card shadow-[var(--shadow-soft)] transition-all overflow-hidden animate-fade-in",
+        isOpen ? "border-primary/40 ring-1 ring-primary/20" : "border-border",
       )}
     >
       <div className="flex items-center gap-4 px-6 py-4">
@@ -369,7 +369,6 @@ function SectionCard({
             "h-9 w-9 rounded-full flex items-center justify-center text-sm font-semibold transition-colors shrink-0",
             status === "complete" && "bg-success text-success-foreground",
             status === "active" && "bg-primary text-primary-foreground",
-            status === "locked" && "bg-muted text-muted-foreground",
           )}
         >
           {status === "complete" ? <Check className="h-4 w-4" /> : index}
@@ -381,7 +380,7 @@ function SectionCard({
         {status === "complete" && !isOpen && onEdit && (
           <button
             onClick={onEdit}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-foreground/80 hover:text-foreground px-3 py-1.5 rounded-md hover:bg-muted transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground/70 hover:text-foreground px-3 py-1.5 rounded-md hover:bg-muted transition-colors"
           >
             <Pencil className="h-3.5 w-3.5" />
             Edit
@@ -389,12 +388,10 @@ function SectionCard({
         )}
       </div>
 
-      {/* Summary (collapsed completed view) */}
       {status === "complete" && !isOpen && summary && (
         <div className="px-6 pb-5 -mt-1 pl-[68px]">{summary}</div>
       )}
 
-      {/* Expanded body */}
       <div
         className={cn(
           "grid transition-all duration-300 ease-out",
