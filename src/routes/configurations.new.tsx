@@ -633,7 +633,7 @@ function NewIntegrationPage() {
   const removeRow = (id: string) => setRows((rs) => rs.filter((r) => r.id !== id));
 
   // Section numbering (when push skipped, configuration is omitted)
-  const Sx = isPush ? { general: 1, config: 2, dest: 3, map: 4, over: 5 } : { general: 1, config: 0, dest: 2, map: 3, over: 4 };
+  const Sx = isPush ? { general: 1, config: 2, dest: 3, map: 4 } : { general: 1, config: 0, dest: 2, map: 3 };
 
   const handleSubmit = () => {
     toast.success("Integration created", {
