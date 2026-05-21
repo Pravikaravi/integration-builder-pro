@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ConfigurationsRouteImport } from './routes/configurations'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ConfigurationsIndexRouteImport } from './routes/configurations.index'
+import { Route as ConfigurationsNewRouteImport } from './routes/configurations.new'
 
 const ConfigurationsRoute = ConfigurationsRouteImport.update({
   id: '/configurations',
@@ -28,28 +29,45 @@ const ConfigurationsIndexRoute = ConfigurationsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ConfigurationsRoute,
 } as any)
+const ConfigurationsNewRoute = ConfigurationsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ConfigurationsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/configurations': typeof ConfigurationsRouteWithChildren
+  '/configurations/new': typeof ConfigurationsNewRoute
   '/configurations/': typeof ConfigurationsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/configurations/new': typeof ConfigurationsNewRoute
   '/configurations': typeof ConfigurationsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/configurations': typeof ConfigurationsRouteWithChildren
+  '/configurations/new': typeof ConfigurationsNewRoute
   '/configurations/': typeof ConfigurationsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/configurations' | '/configurations/'
+  fullPaths:
+    | '/'
+    | '/configurations'
+    | '/configurations/new'
+    | '/configurations/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/configurations'
-  id: '__root__' | '/' | '/configurations' | '/configurations/'
+  to: '/' | '/configurations/new' | '/configurations'
+  id:
+    | '__root__'
+    | '/'
+    | '/configurations'
+    | '/configurations/new'
+    | '/configurations/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -80,14 +98,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfigurationsIndexRouteImport
       parentRoute: typeof ConfigurationsRoute
     }
+    '/configurations/new': {
+      id: '/configurations/new'
+      path: '/new'
+      fullPath: '/configurations/new'
+      preLoaderRoute: typeof ConfigurationsNewRouteImport
+      parentRoute: typeof ConfigurationsRoute
+    }
   }
 }
 
 interface ConfigurationsRouteChildren {
+  ConfigurationsNewRoute: typeof ConfigurationsNewRoute
   ConfigurationsIndexRoute: typeof ConfigurationsIndexRoute
 }
 
 const ConfigurationsRouteChildren: ConfigurationsRouteChildren = {
+  ConfigurationsNewRoute: ConfigurationsNewRoute,
   ConfigurationsIndexRoute: ConfigurationsIndexRoute,
 }
 
