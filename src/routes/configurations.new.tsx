@@ -606,9 +606,8 @@ function NewIntegrationPage() {
   ]);
 
   const isPush = type === "Push";
-  const sectionTitles = ["General Details", isPush ? "Configuration" : null, "Destination Configuration", "Field Mapping", "Overview"].filter(Boolean) as string[];
-  // Map logical section index → 1..n display
-  const totalSections = isPush ? 5 : 4;
+  const sectionTitles = ["General Details", isPush ? "Configuration" : null, "Destination Configuration", "Field Mapping"].filter(Boolean) as string[];
+  const totalSections = isPush ? 4 : 3;
 
   // Validation
   const section1Valid = name.trim() && type && category && contact;
