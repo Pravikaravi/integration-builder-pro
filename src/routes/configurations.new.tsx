@@ -11,7 +11,6 @@ import {
   Plus,
   Minus,
   Home,
-  CheckCircle2,
   Search as SearchIcon,
   X,
   AlertCircle,
