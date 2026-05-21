@@ -709,8 +709,10 @@ function NewIntegrationPage() {
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Salesforce CRM Sync" />
           </div>
           <div>
-            <Label required>Integration Type</Label>
-            <Select value={type} onChange={(v) => setType(v as IntType)} options={["Push", "Pull", "File", "Document"] as const} />
+            <Label>Integration Type</Label>
+            <div className="h-10 px-3 rounded-md border border-input bg-muted/30 text-sm flex items-center text-foreground font-medium">
+              {type}
+            </div>
           </div>
           <div>
             <Label required>Integration Category</Label>
