@@ -588,7 +588,7 @@ function NewIntegrationPage() {
   // Section 2 (Push only)
   const [entityType, setEntityType] = useState<string>("");
   const [sameAsCalling, setSameAsCalling] = useState(false);
-  const [triggers, setTriggers] = useState<string[]>([]);
+  const [trigger, setTrigger] = useState<string>("");
   const [maxAttempts, setMaxAttempts] = useState(3);
   const [errorEmail, setErrorEmail] = useState("");
   const [query, setQuery] = useState("SELECT id, guest_name, check_in, total\nFROM bookings\nWHERE status = 'CONFIRMED';");
@@ -612,7 +612,7 @@ function NewIntegrationPage() {
 
   // Validation
   const section1Valid = name.trim() && type && category && contact;
-  const section2Valid = !hasConfig ? true : entityType && triggers.length > 0 && errorEmail;
+  const section2Valid = !hasConfig ? true : entityType && trigger && errorEmail;
   const section3Valid =
     action === "FTP" ? ftp.inbound || ftp.outbound :
     action === "HTTP Service" || action === "HTTP Service External" ? httpDestinations[0]?.baseUrl :
@@ -652,7 +652,7 @@ function NewIntegrationPage() {
     setDescription("");
     setNotes("");
     setEntityType("");
-    setTriggers([]);
+    setTrigger("");
     setMaxAttempts(3);
     setErrorEmail("");
     setSameAsCalling(false);
@@ -866,7 +866,7 @@ function NewIntegrationPage() {
           summary={
             <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
               <div><dt className="text-xs text-muted-foreground">Entity</dt><dd className="font-medium text-foreground">{entityType}</dd></div>
-              <div><dt className="text-xs text-muted-foreground">Triggers</dt><dd className="font-medium text-foreground">{triggers.join(", ")}</dd></div>
+              <div><dt className="text-xs text-muted-foreground">Trigger</dt><dd className="font-medium text-foreground">{trigger}</dd></div>
               <div><dt className="text-xs text-muted-foreground">Max Attempts</dt><dd className="font-medium text-foreground">{maxAttempts}</dd></div>
               <div><dt className="text-xs text-muted-foreground">Error Email</dt><dd className="font-medium text-foreground">{errorEmail}</dd></div>
             </dl>
@@ -878,8 +878,8 @@ function NewIntegrationPage() {
               <Select value={entityType} onChange={setEntityType} options={ENTITY_TYPES} placeholder="Select entity" />
             </div>
             <div>
-              <Label>Trigger Type</Label>
-              <MultiSelect values={triggers} onChange={setTriggers} options={TRIGGERS} placeholder="Select triggers" />
+              <Label required>Trigger Type</Label>
+              <Select value={trigger} onChange={setTrigger} options={TRIGGERS} placeholder="Select trigger" />
             </div>
             <div className="md:col-span-2">
               <Checkbox checked={sameAsCalling} onChange={setSameAsCalling} label="Same as Calling Entity Type" />
