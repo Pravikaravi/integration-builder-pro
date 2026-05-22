@@ -33,7 +33,7 @@ const navItems = [
   { label: "Inventory Management", icon: Package, to: "/inventory" },
 ];
 
-export function AppLayout() {
+export function AppLayout({ children }: { children?: React.ReactNode } = {}) {
   const location = useLocation();
   const isConfig = (to: string) =>
     to === "/configurations" && location.pathname.startsWith("/configurations");
