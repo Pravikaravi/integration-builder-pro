@@ -604,13 +604,14 @@ function NewIntegrationPage() {
     { id: crypto.randomUUID(), third: "checkInDate", field: "booking.checkIn", mandatory: true },
   ]);
 
+  const hasConfig = type === "Push" || type === "Pull";
   const isPush = type === "Push";
-  const sectionTitles = ["General Details", isPush ? "Configuration" : null, "Destination Configuration", "Field Mapping"].filter(Boolean) as string[];
-  const totalSections = isPush ? 4 : 3;
+  const sectionTitles = ["General Details", hasConfig ? "Configuration" : null, "Destination Configuration", "Field Mapping"].filter(Boolean) as string[];
+  const totalSections = hasConfig ? 4 : 3;
 
   // Validation
   const section1Valid = name.trim() && type && category && contact;
-  const section2Valid = !isPush ? true : entityType && triggers.length > 0 && errorEmail;
+  const section2Valid = !hasConfig ? true : entityType && triggers.length > 0 && errorEmail;
   const section3Valid =
     action === "FTP" ? ftp.inbound || ftp.outbound :
     action === "HTTP Service" || action === "HTTP Service External" ? httpDestinations[0]?.baseUrl :
@@ -619,7 +620,12 @@ function NewIntegrationPage() {
 
   const next = (n: number) => {
     setCompleted((s) => new Set([...s, n]));
-    setActive(n + 1);
+    // skip config section for non-push/pull types
+    if (n === 1 && !hasConfig) {
+      setActive(3);
+    } else {
+      setActive(n + 1);
+    }
   };
 
   const statusFor = (n: number): Status =>
@@ -631,8 +637,47 @@ function NewIntegrationPage() {
   const addRow = () => setRows((rs) => [...rs, { id: crypto.randomUUID(), third: "", field: "", mandatory: false }]);
   const removeRow = (id: string) => setRows((rs) => rs.filter((r) => r.id !== id));
 
-  // Section numbering (when push skipped, configuration is omitted)
-  const Sx = isPush ? { general: 1, config: 2, dest: 3, map: 4 } : { general: 1, config: 0, dest: 2, map: 3 };
+  // Section numbering (when config skipped, configuration is omitted)
+  const Sx = hasConfig ? { general: 1, config: 2, dest: 3, map: 4 } : { general: 1, config: 0, dest: 2, map: 3 };
+
+  // Saved integrations summary list (for "+ Add Next Integration")
+  type SavedIntegration = { id: string; name: string; type: IntType; category: string; action: string };
+  const [savedIntegrations, setSavedIntegrations] = useState<SavedIntegration[]>([]);
+
+  const resetForm = () => {
+    setName("");
+    setCategory("");
+    setContact("");
+    setDescription("");
+    setNotes("");
+    setEntityType("");
+    setTriggers([]);
+    setMaxAttempts(3);
+    setErrorEmail("");
+    setSameAsCalling(false);
+    setAction("");
+    setFtp(defaultFtp());
+    setHttpDestinations([defaultHttp()]);
+    setRows([
+      { id: crypto.randomUUID(), third: "guestName", field: "booking.guestName", mandatory: true },
+      { id: crypto.randomUUID(), third: "checkInDate", field: "booking.checkIn", mandatory: true },
+    ]);
+    setCompleted(new Set());
+    setActive(1);
+  };
+
+  const handleAddNextIntegration = () => {
+    if (!name.trim()) {
+      toast.error("Please complete General Details before adding another integration.");
+      return;
+    }
+    setSavedIntegrations((s) => [
+      ...s,
+      { id: `INT-${1000 + s.length + 1}`, name, type, category, action: action || "—" },
+    ]);
+    toast.success(`${name} saved`, { description: "Starting a new integration form." });
+    resetForm();
+  };
 
   const handleSubmit = () => {
     toast.success("Integration created", {
