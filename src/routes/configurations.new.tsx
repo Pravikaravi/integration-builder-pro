@@ -762,14 +762,6 @@ function NewIntegrationPage() {
               </div>
             </div>
           )}
-      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Home className="h-3.5 w-3.5" />
-        <Link to="/configurations" className="hover:text-foreground">Configurations</Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <Link to="/configurations" className="hover:text-foreground">Integration Configuration</Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="text-foreground font-medium">New Integration</span>
-      </nav>
 
       {/* Header */}
       <div className="flex items-start gap-3">
