@@ -98,7 +98,7 @@ export function AppLayout({ children }: { children?: React.ReactNode } = {}) {
           </div>
         </header>
         <main className="flex-1 p-8">
-          <Outlet />
+          {children ?? <Outlet />}
         </main>
       </div>
       <Toaster richColors position="top-right" />
