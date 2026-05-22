@@ -977,13 +977,19 @@ function NewIntegrationPage() {
             </div>
           )}
         </div>
-        <div className="mt-6 flex items-center justify-between">
-          <Button variant="outline" onClick={() => setActive(isPush ? 2 : 1)}>
+        <div className="mt-6 flex items-center justify-between gap-3 flex-wrap">
+          <Button variant="outline" onClick={() => setActive(hasConfig ? 2 : 1)}>
             <ChevronRight className="h-4 w-4 rotate-180" /> Back
           </Button>
-          <Button onClick={() => next(3)} disabled={!section3Valid}>
-            Next <ChevronRight className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleAddNextIntegration} disabled={!section3Valid}>
+              <Plus className="h-4 w-4" />
+              Add Next Integration
+            </Button>
+            <Button onClick={() => next(3)} disabled={!section3Valid}>
+              Next <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </SectionCard>
 
