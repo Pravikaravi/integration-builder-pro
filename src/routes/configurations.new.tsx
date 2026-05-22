@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 
 type IntType = "Push" | "Pull" | "File" | "Document";
 
