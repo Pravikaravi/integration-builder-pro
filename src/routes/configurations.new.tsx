@@ -855,7 +855,7 @@ function NewIntegrationPage() {
       </SectionCard>
 
       {/* SECTION 2 — Configuration (Push only) */}
-      {isPush && (
+      {hasConfig && (
         <SectionCard
           index={2}
           title="Configuration"
