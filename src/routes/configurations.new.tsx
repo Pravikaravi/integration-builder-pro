@@ -407,7 +407,7 @@ function SectionCard({
 
 /* ─────────────── data ─────────────── */
 
-const CATEGORIES = ["CRM", "PMS", "Payments", "Marketing", "Finance", "Support", "Compliance"] as const;
+const CATEGORIES = ["Pull Integration", "Push Integration", "File Integration", "Document Integration"] as const;
 const CONTACTS = ["test1@mail.com", "test2@mail.com", "admin@mail.com"];
 const ENTITY_TYPES = ["Booking", "Contact", "Client"] as const;
 const TRIGGERS = ["DELETE", "UPDATE", "CREATE OR CHANGE"];
