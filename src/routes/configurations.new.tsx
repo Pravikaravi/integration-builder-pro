@@ -1057,6 +1057,8 @@ function NewIntegrationPage() {
           </Button>
         </div>
       </SectionCard>
+        </div>
+      </div>
     </div>
   );
 }
