@@ -33,7 +33,7 @@ const navItems = [
   { label: "Inventory Management", icon: Package, to: "/inventory" },
 ];
 
-export function AppLayout() {
+export function AppLayout({ children }: { children?: React.ReactNode } = {}) {
   const location = useLocation();
   const isConfig = (to: string) =>
     to === "/configurations" && location.pathname.startsWith("/configurations");
@@ -98,7 +98,7 @@ export function AppLayout() {
           </div>
         </header>
         <main className="flex-1 p-8">
-          <Outlet />
+          {children ?? <Outlet />}
         </main>
       </div>
       <Toaster richColors position="top-right" />

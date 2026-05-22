@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 
 type IntType = "Push" | "Pull" | "File" | "Document";
 
@@ -407,7 +408,7 @@ function SectionCard({
 
 /* ─────────────── data ─────────────── */
 
-const CATEGORIES = ["CRM", "PMS", "Payments", "Marketing", "Finance", "Support", "Compliance"] as const;
+const CATEGORIES = ["Pull Integration", "Push Integration", "File Integration", "Document Integration"] as const;
 const CONTACTS = ["test1@mail.com", "test2@mail.com", "admin@mail.com"];
 const ENTITY_TYPES = ["Booking", "Contact", "Client"] as const;
 const TRIGGERS = ["DELETE", "UPDATE", "CREATE OR CHANGE"];
@@ -604,13 +605,14 @@ function NewIntegrationPage() {
     { id: crypto.randomUUID(), third: "checkInDate", field: "booking.checkIn", mandatory: true },
   ]);
 
+  const hasConfig = type === "Push" || type === "Pull";
   const isPush = type === "Push";
-  const sectionTitles = ["General Details", isPush ? "Configuration" : null, "Destination Configuration", "Field Mapping"].filter(Boolean) as string[];
-  const totalSections = isPush ? 4 : 3;
+  const sectionTitles = ["General Details", hasConfig ? "Configuration" : null, "Destination Configuration", "Field Mapping"].filter(Boolean) as string[];
+  const totalSections = hasConfig ? 4 : 3;
 
   // Validation
   const section1Valid = name.trim() && type && category && contact;
-  const section2Valid = !isPush ? true : entityType && triggers.length > 0 && errorEmail;
+  const section2Valid = !hasConfig ? true : entityType && triggers.length > 0 && errorEmail;
   const section3Valid =
     action === "FTP" ? ftp.inbound || ftp.outbound :
     action === "HTTP Service" || action === "HTTP Service External" ? httpDestinations[0]?.baseUrl :
@@ -619,7 +621,12 @@ function NewIntegrationPage() {
 
   const next = (n: number) => {
     setCompleted((s) => new Set([...s, n]));
-    setActive(n + 1);
+    // skip config section for non-push/pull types
+    if (n === 1 && !hasConfig) {
+      setActive(3);
+    } else {
+      setActive(n + 1);
+    }
   };
 
   const statusFor = (n: number): Status =>
@@ -631,8 +638,47 @@ function NewIntegrationPage() {
   const addRow = () => setRows((rs) => [...rs, { id: crypto.randomUUID(), third: "", field: "", mandatory: false }]);
   const removeRow = (id: string) => setRows((rs) => rs.filter((r) => r.id !== id));
 
-  // Section numbering (when push skipped, configuration is omitted)
-  const Sx = isPush ? { general: 1, config: 2, dest: 3, map: 4 } : { general: 1, config: 0, dest: 2, map: 3 };
+  // Section numbering (when config skipped, configuration is omitted)
+  const Sx = hasConfig ? { general: 1, config: 2, dest: 3, map: 4 } : { general: 1, config: 0, dest: 2, map: 3 };
+
+  // Saved integrations summary list (for "+ Add Next Integration")
+  type SavedIntegration = { id: string; name: string; type: IntType; category: string; action: string };
+  const [savedIntegrations, setSavedIntegrations] = useState<SavedIntegration[]>([]);
+
+  const resetForm = () => {
+    setName("");
+    setCategory("");
+    setContact("");
+    setDescription("");
+    setNotes("");
+    setEntityType("");
+    setTriggers([]);
+    setMaxAttempts(3);
+    setErrorEmail("");
+    setSameAsCalling(false);
+    setAction("");
+    setFtp(defaultFtp());
+    setHttpDestinations([defaultHttp()]);
+    setRows([
+      { id: crypto.randomUUID(), third: "guestName", field: "booking.guestName", mandatory: true },
+      { id: crypto.randomUUID(), third: "checkInDate", field: "booking.checkIn", mandatory: true },
+    ]);
+    setCompleted(new Set());
+    setActive(1);
+  };
+
+  const handleAddNextIntegration = () => {
+    if (!name.trim()) {
+      toast.error("Please complete General Details before adding another integration.");
+      return;
+    }
+    setSavedIntegrations((s) => [
+      ...s,
+      { id: `INT-${1000 + s.length + 1}`, name, type, category, action: action || "—" },
+    ]);
+    toast.success(`${name} saved`, { description: "Starting a new integration form." });
+    resetForm();
+  };
 
   const handleSubmit = () => {
     toast.success("Integration created", {
@@ -642,16 +688,81 @@ function NewIntegrationPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-[1100px] mx-auto pb-24">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Home className="h-3.5 w-3.5" />
-        <Link to="/configurations" className="hover:text-foreground">Configurations</Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <Link to="/configurations" className="hover:text-foreground">Integration Configuration</Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="text-foreground font-medium">New Integration</span>
-      </nav>
+    <div className="min-h-screen bg-muted/40">
+      <Toaster richColors position="top-right" />
+      {/* Top Header */}
+      <header className="h-16 sticky top-0 z-30 bg-card/90 backdrop-blur border-b border-border">
+        <div className="max-w-[1200px] mx-auto h-full flex items-center justify-between px-6">
+          <div className="flex items-center gap-8">
+            <Link to="/configurations" className="text-xl font-black tracking-tight text-foreground">
+              OPTIMO
+            </Link>
+            <nav className="hidden md:flex items-center gap-1 text-sm">
+              <Link to="/configurations" className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                Configurations
+              </Link>
+              <span className="px-3 py-1.5 rounded-md bg-accent text-accent-foreground font-medium">
+                Integration Configuration
+              </span>
+            </nav>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-xs font-semibold">
+              OU
+            </div>
+            <div className="text-sm hidden sm:block">
+              <div className="font-medium text-foreground leading-tight">Optimo User</div>
+              <div className="text-xs text-muted-foreground leading-tight">Administrator</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="px-6 py-8">
+        <div className="space-y-6 max-w-[1100px] mx-auto pb-24">
+          {/* Breadcrumb */}
+          <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Home className="h-3.5 w-3.5" />
+            <Link to="/configurations" className="hover:text-foreground">Configurations</Link>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <Link to="/configurations" className="hover:text-foreground">Integration Configuration</Link>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <span className="text-foreground font-medium">New Integration</span>
+          </nav>
+
+          {/* Saved Integrations Summary */}
+          {savedIntegrations.length > 0 && (
+            <div className="rounded-xl border border-border bg-card shadow-[var(--shadow-soft)] p-5 animate-fade-in">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <div className="font-semibold text-foreground text-sm">
+                    Saved Integrations in this session
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    These will be submitted together when you finish.
+                  </div>
+                </div>
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20">
+                  {savedIntegrations.length} saved
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {savedIntegrations.map((si) => (
+                  <div key={si.id} className="rounded-lg border border-border bg-muted/30 p-3 flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-full bg-success text-success-foreground flex items-center justify-center shrink-0">
+                      <Check className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-foreground text-sm truncate">{si.name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {si.id} · {si.type} · {si.category}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
       {/* Header */}
       <div className="flex items-start gap-3">
@@ -744,7 +855,7 @@ function NewIntegrationPage() {
       </SectionCard>
 
       {/* SECTION 2 — Configuration (Push only) */}
-      {isPush && (
+      {hasConfig && (
         <SectionCard
           index={2}
           title="Configuration"
@@ -866,13 +977,19 @@ function NewIntegrationPage() {
             </div>
           )}
         </div>
-        <div className="mt-6 flex items-center justify-between">
-          <Button variant="outline" onClick={() => setActive(isPush ? 2 : 1)}>
+        <div className="mt-6 flex items-center justify-between gap-3 flex-wrap">
+          <Button variant="outline" onClick={() => setActive(hasConfig ? 2 : 1)}>
             <ChevronRight className="h-4 w-4 rotate-180" /> Back
           </Button>
-          <Button onClick={() => next(3)} disabled={!section3Valid}>
-            Next <ChevronRight className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleAddNextIntegration} disabled={!section3Valid}>
+              <Plus className="h-4 w-4" />
+              Add Next Integration
+            </Button>
+            <Button onClick={() => next(3)} disabled={!section3Valid}>
+              Next <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </SectionCard>
 
@@ -947,6 +1064,8 @@ function NewIntegrationPage() {
           </Button>
         </div>
       </SectionCard>
+        </div>
+      </div>
     </div>
   );
 }
