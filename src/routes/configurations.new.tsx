@@ -687,8 +687,81 @@ function NewIntegrationPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-[1100px] mx-auto pb-24">
-      {/* Breadcrumb */}
+    <div className="min-h-screen bg-muted/40">
+      <Toaster richColors position="top-right" />
+      {/* Top Header */}
+      <header className="h-16 sticky top-0 z-30 bg-card/90 backdrop-blur border-b border-border">
+        <div className="max-w-[1200px] mx-auto h-full flex items-center justify-between px-6">
+          <div className="flex items-center gap-8">
+            <Link to="/configurations" className="text-xl font-black tracking-tight text-foreground">
+              OPTIMO
+            </Link>
+            <nav className="hidden md:flex items-center gap-1 text-sm">
+              <Link to="/configurations" className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                Configurations
+              </Link>
+              <span className="px-3 py-1.5 rounded-md bg-accent text-accent-foreground font-medium">
+                Integration Configuration
+              </span>
+            </nav>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-xs font-semibold">
+              OU
+            </div>
+            <div className="text-sm hidden sm:block">
+              <div className="font-medium text-foreground leading-tight">Optimo User</div>
+              <div className="text-xs text-muted-foreground leading-tight">Administrator</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="px-6 py-8">
+        <div className="space-y-6 max-w-[1100px] mx-auto pb-24">
+          {/* Breadcrumb */}
+          <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Home className="h-3.5 w-3.5" />
+            <Link to="/configurations" className="hover:text-foreground">Configurations</Link>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <Link to="/configurations" className="hover:text-foreground">Integration Configuration</Link>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <span className="text-foreground font-medium">New Integration</span>
+          </nav>
+
+          {/* Saved Integrations Summary */}
+          {savedIntegrations.length > 0 && (
+            <div className="rounded-xl border border-border bg-card shadow-[var(--shadow-soft)] p-5 animate-fade-in">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <div className="font-semibold text-foreground text-sm">
+                    Saved Integrations in this session
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    These will be submitted together when you finish.
+                  </div>
+                </div>
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20">
+                  {savedIntegrations.length} saved
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {savedIntegrations.map((si) => (
+                  <div key={si.id} className="rounded-lg border border-border bg-muted/30 p-3 flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-full bg-success text-success-foreground flex items-center justify-center shrink-0">
+                      <Check className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-foreground text-sm truncate">{si.name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {si.id} · {si.type} · {si.category}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
       <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
         <Home className="h-3.5 w-3.5" />
         <Link to="/configurations" className="hover:text-foreground">Configurations</Link>
