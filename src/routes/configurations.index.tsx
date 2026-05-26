@@ -293,7 +293,7 @@ function ConfigurationsListPage() {
               ))}
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-16 text-center">
+                  <td colSpan={8} className="px-5 py-16 text-center">
                     <div className="inline-flex flex-col items-center gap-2">
                       <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
                         <Search className="h-5 w-5 text-muted-foreground" />
