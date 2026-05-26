@@ -7,15 +7,9 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronLeft,
-  Eye,
-  Pencil,
-  Trash2,
-  MoreHorizontal,
+  MoreVertical,
   Download,
   ArrowUpDown,
-  CheckCircle2,
-  PauseCircle,
-  AlertCircle,
   Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
