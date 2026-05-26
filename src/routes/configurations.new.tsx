@@ -9,11 +9,12 @@ import {
   Eye,
   EyeOff,
   Plus,
-  Minus,
   Home,
   Search as SearchIcon,
   X,
   AlertCircle,
+  Zap,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -432,16 +433,22 @@ function SectionCard({
   );
 }
 
+/* ─────────────── validation helpers ─────────────── */
+
+const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+const isValidUrl = (v: string) => /^https?:\/\/.+/.test(v);
+
+const FieldError = ({ show, message }: { show: boolean; message: string }) =>
+  show ? <p className="text-xs text-destructive mt-1">{message}</p> : null;
+
 /* ─────────────── data ─────────────── */
 
-const CATEGORIES = ["Pull Integration", "Push Integration", "File Integration", "Document Integration"] as const;
 const CONTACTS = ["test1@mail.com", "test2@mail.com", "admin@mail.com"];
 const ENTITY_TYPES = ["Booking", "Contact", "Client"] as const;
 const TRIGGERS = ["DELETE", "UPDATE", "CREATE OR CHANGE"];
 const ACTIONS = ["HTTP Service", "HTTP Service External", "FTP"] as const;
 const METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH"] as const;
 const OPERATIONS = ["api/v4.1/bookings", "api/v4.1/contact"] as const;
-const INT_FIELDS = ["booking.id", "booking.guestName", "booking.checkIn", "booking.total", "contact.email", "contact.phone"];
 const EXISTING_INTEGRATIONS = [
   "Salesforce - HTTP",
   "Optimo Test Salesforce",
@@ -599,9 +606,12 @@ function HttpPanel({ form, set, removable, onRemove }: { form: HttpForm; set: (v
   );
 }
 
-/* ─────────────── Mapping rows ─────────────── */
+/* ─────────────── Mapping ─────────────── */
 
-interface MapRow { id: string; third: string; field: string; mandatory: boolean }
+interface MapRow { id: string; source: string; target: string; type: string }
+
+const SOURCE_FIELDS = ["booking.id", "booking.guestName", "booking.checkIn", "booking.checkOut", "booking.total", "booking.status", "contact.email", "contact.phone", "contact.name"];
+const TARGET_FIELDS = ["id", "guest_name", "check_in_date", "check_out_date", "total_amount", "status", "email", "phone", "full_name"];
 
 /* ─────────────── Main page ─────────────── */
 
@@ -612,12 +622,12 @@ function NewIntegrationPage() {
   // Section state
   const [active, setActive] = useState(1);
   const [completed, setCompleted] = useState<Set<number>>(new Set());
+  const [attempted, setAttempted] = useState<Set<number>>(new Set());
 
   // Section 1
   const [name, setName] = useState("");
   const [type, setType] = useState<IntType>(initialType);
   const [isActive, setIsActive] = useState(true);
-  const [category, setCategory] = useState<string>("");
   const [contact, setContact] = useState("");
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
@@ -641,12 +651,12 @@ function NewIntegrationPage() {
   // Section 3 (Pull destination)
   const [pullApiUrl, setPullApiUrl] = useState("");
 
-  // Section 4
-  const [mappingType, setMappingType] = useState<string>("Outbound");
-  const [rows, setRows] = useState<MapRow[]>([
-    { id: crypto.randomUUID(), third: "guestName", field: "booking.guestName", mandatory: true },
-    { id: crypto.randomUUID(), third: "checkInDate", field: "booking.checkIn", mandatory: true },
-  ]);
+  // Section 4 — Mapping
+  const [sourceTab, setSourceTab] = useState<"JSON" | "XML" | "Upload">("JSON");
+  const [targetTab, setTargetTab] = useState<"JSON" | "XML" | "Upload">("JSON");
+  const [sourcePayload, setSourcePayload] = useState("");
+  const [targetPayload, setTargetPayload] = useState("");
+  const [rows, setRows] = useState<MapRow[]>([]);
 
   const hasConfig = type === "Push" || type === "Pull";
   const isPush = type === "Push";
@@ -654,18 +664,36 @@ function NewIntegrationPage() {
   const totalSections = hasConfig ? 4 : 3;
 
   // Validation
-  const section1Valid = name.trim() && type && category && contact;
-  const section2Valid = !hasConfig ? true : isPush ? entityType && trigger && errorEmail : true;
+  const s1 = attempted.has(1);
+  const section1Valid = !!(name.trim() && type && contact);
+
+  const emailValid = errorEmail ? isValidEmail(errorEmail) : true;
+  const s2 = attempted.has(2);
+  const section2Valid = !hasConfig
+    ? true
+    : isPush
+      ? !!(entityType && trigger && errorEmail && emailValid)
+      : !!(errorEmail ? emailValid : true);
+
+  const pullUrlValid = pullApiUrl ? isValidUrl(pullApiUrl) : false;
+  const httpUrlValid = httpDestinations[0]?.baseUrl ? isValidUrl(httpDestinations[0].baseUrl) : false;
+  const s3 = attempted.has(3);
   const section3Valid = isPush
-    ? (action === "FTP" ? ftp.inbound || ftp.outbound :
-       action === "HTTP Service" || action === "HTTP Service External" ? httpDestinations[0]?.baseUrl :
-       false)
-    : !!pullApiUrl.trim();
-  const section4Valid = rows.length > 0 && rows.every((r) => r.third && r.field);
+    ? (action === "FTP"
+        ? ftp.inbound || ftp.outbound
+        : (action === "HTTP Service" || action === "HTTP Service External")
+          ? !!(httpDestinations[0]?.baseUrl && httpUrlValid)
+          : false)
+    : !!(pullApiUrl.trim() && pullUrlValid);
+
+  const s4 = attempted.has(4);
+  const section4Valid = rows.length > 0 && rows.every((r) => r.source && r.target);
 
   const next = (n: number) => {
+    setAttempted((s) => new Set([...s, n]));
+    const valid = n === 1 ? section1Valid : n === 2 ? section2Valid : n === 3 ? section3Valid : section4Valid;
+    if (!valid) return;
     setCompleted((s) => new Set([...s, n]));
-    // skip config section for non-push/pull types
     if (n === 1 && !hasConfig) {
       setActive(3);
     } else {
@@ -679,19 +707,73 @@ function NewIntegrationPage() {
   const updateRow = (id: string, patch: Partial<MapRow>) =>
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 
-  const addRow = () => setRows((rs) => [...rs, { id: crypto.randomUUID(), third: "", field: "", mandatory: false }]);
+  const addRow = () => setRows((rs) => [...rs, { id: crypto.randomUUID(), source: "", target: "", type: "string" }]);
   const removeRow = (id: string) => setRows((rs) => rs.filter((r) => r.id !== id));
+
+  const parseSourcePayload = () => {
+    try {
+      const parsed = JSON.parse(sourcePayload);
+      const keys = Object.keys(parsed);
+      const newRows: MapRow[] = keys.map((k) => ({
+        id: crypto.randomUUID(),
+        source: k,
+        target: "",
+        type: typeof parsed[k] === "number" ? "number" : typeof parsed[k] === "boolean" ? "boolean" : "string",
+      }));
+      setRows(newRows);
+      toast.success(`Parsed ${keys.length} fields from source payload`);
+    } catch {
+      toast.error("Invalid JSON", { description: "Please enter valid JSON in the source payload." });
+    }
+  };
+
+  const parseTargetPayload = () => {
+    try {
+      const parsed = JSON.parse(targetPayload);
+      const keys = Object.keys(parsed);
+      if (rows.length === 0) {
+        const newRows: MapRow[] = keys.map((k) => ({
+          id: crypto.randomUUID(),
+          source: "",
+          target: k,
+          type: typeof parsed[k] === "number" ? "number" : typeof parsed[k] === "boolean" ? "boolean" : "string",
+        }));
+        setRows(newRows);
+      } else {
+        setRows((prev) => prev.map((r, i) => i < keys.length ? { ...r, target: keys[i] } : r));
+      }
+      toast.success(`Parsed ${keys.length} fields from target payload`);
+    } catch {
+      toast.error("Invalid JSON", { description: "Please enter valid JSON in the target payload." });
+    }
+  };
+
+  const autoMap = () => {
+    if (rows.length === 0) {
+      toast.info("No mappings to auto-map", { description: "Parse a source payload first." });
+      return;
+    }
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.target) return r;
+        const match = TARGET_FIELDS.find((t) =>
+          t.toLowerCase().replace(/_/g, "") === r.source.split(".").pop()?.toLowerCase().replace(/_/g, ""),
+        );
+        return match ? { ...r, target: match } : r;
+      }),
+    );
+    toast.success("Auto-mapped fields where possible");
+  };
 
   // Section numbering (when config skipped, configuration is omitted)
   const Sx = hasConfig ? { general: 1, config: 2, dest: 3, map: 4 } : { general: 1, config: 0, dest: 2, map: 3 };
 
   // Saved integrations summary list (for "+ Add Next Integration")
-  type SavedIntegration = { id: string; name: string; type: IntType; category: string; action: string };
+  type SavedIntegration = { id: string; name: string; type: IntType; action: string };
   const [savedIntegrations, setSavedIntegrations] = useState<SavedIntegration[]>([]);
 
   const resetForm = () => {
     setName("");
-    setCategory("");
     setContact("");
     setDescription("");
     setNotes("");
@@ -705,11 +787,13 @@ function NewIntegrationPage() {
     setFtp(defaultFtp());
     setHttpDestinations([defaultHttp()]);
     setPullApiUrl("");
-    setRows([
-      { id: crypto.randomUUID(), third: "guestName", field: "booking.guestName", mandatory: true },
-      { id: crypto.randomUUID(), third: "checkInDate", field: "booking.checkIn", mandatory: true },
-    ]);
+    setSourcePayload("");
+    setTargetPayload("");
+    setSourceTab("JSON");
+    setTargetTab("JSON");
+    setRows([]);
     setCompleted(new Set());
+    setAttempted(new Set());
     setActive(1);
   };
 
@@ -720,7 +804,7 @@ function NewIntegrationPage() {
     }
     setSavedIntegrations((s) => [
       ...s,
-      { id: `INT-${1000 + s.length + 1}`, name, type, category, action: action || "—" },
+      { id: `INT-${1000 + s.length + 1}`, name, type, action: action || "—" },
     ]);
     toast.success(`${name} saved`, { description: "Starting a new integration form." });
     resetForm();
@@ -743,14 +827,6 @@ function NewIntegrationPage() {
             <Link to="/configurations" className="text-xl font-black tracking-tight text-foreground">
               OPTIMO
             </Link>
-            <nav className="hidden md:flex items-center gap-1 text-sm">
-              <Link to="/configurations" className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                Configurations
-              </Link>
-              <span className="px-3 py-1.5 rounded-md bg-accent text-accent-foreground font-medium">
-                Integration Configuration
-              </span>
-            </nav>
           </div>
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-xs font-semibold">
@@ -801,7 +877,7 @@ function NewIntegrationPage() {
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-foreground text-sm truncate">{si.name}</div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        {si.id} · {si.type} · {si.category}
+                        {si.id} · {si.type}
                       </div>
                     </div>
                   </div>
@@ -850,7 +926,6 @@ function NewIntegrationPage() {
           <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
             <div><dt className="text-xs text-muted-foreground">Name</dt><dd className="font-medium text-foreground">{name}</dd></div>
             <div><dt className="text-xs text-muted-foreground">Type</dt><dd className="font-medium text-foreground">{type}</dd></div>
-            <div><dt className="text-xs text-muted-foreground">Category</dt><dd className="font-medium text-foreground">{category}</dd></div>
             <div><dt className="text-xs text-muted-foreground">Contact</dt><dd className="font-medium text-foreground">{contact}</dd></div>
           </dl>
         }
@@ -858,7 +933,8 @@ function NewIntegrationPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
           <div>
             <Label required>Integration Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Salesforce CRM Sync" />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Salesforce CRM Sync" className={s1 && !name.trim() ? "border-destructive" : ""} />
+            <FieldError show={s1 && !name.trim()} message="Integration name is required." />
           </div>
           <div>
             <Label>Integration Type</Label>
@@ -867,12 +943,9 @@ function NewIntegrationPage() {
             </div>
           </div>
           <div>
-            <Label required>Integration Category</Label>
-            <Select value={category} onChange={setCategory} options={CATEGORIES} placeholder="Select category" />
-          </div>
-          <div>
             <Label required>Point of Contact</Label>
             <SearchableSelect value={contact} onChange={setContact} options={CONTACTS} placeholder="Select contact" />
+            <FieldError show={s1 && !contact} message="Point of contact is required." />
           </div>
           <div className="md:col-span-2 flex items-center justify-between rounded-md border border-border bg-muted/30 px-4 py-3">
             <div>
@@ -892,9 +965,9 @@ function NewIntegrationPage() {
         </div>
         <div className="mt-6 flex items-center justify-between">
           <div className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
-            {!section1Valid && <><AlertCircle className="h-3.5 w-3.5 text-warning" /> Complete required fields to continue.</>}
+            {s1 && !section1Valid && <><AlertCircle className="h-3.5 w-3.5 text-destructive" /> Complete required fields to continue.</>}
           </div>
-          <Button onClick={() => next(1)} disabled={!section1Valid}>
+          <Button onClick={() => next(1)}>
             Next <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -931,10 +1004,12 @@ function NewIntegrationPage() {
               <div>
                 <Label required>Entity Type</Label>
                 <Select value={entityType} onChange={setEntityType} options={ENTITY_TYPES} placeholder="Select entity" />
+                <FieldError show={s2 && !entityType} message="Entity type is required." />
               </div>
               <div>
                 <Label required>Trigger Type</Label>
                 <Select value={trigger} onChange={setTrigger} options={TRIGGERS} placeholder="Select trigger" />
+                <FieldError show={s2 && !trigger} message="Trigger type is required." />
               </div>
               <div className="md:col-span-2">
                 <Checkbox checked={sameAsCalling} onChange={setSameAsCalling} label="Same as Calling Entity Type" />
@@ -945,7 +1020,9 @@ function NewIntegrationPage() {
               </div>
               <div>
                 <Label required>Error Log Email</Label>
-                <Input type="email" value={errorEmail} onChange={(e) => setErrorEmail(e.target.value)} placeholder="errors@company.com" />
+                <Input type="email" value={errorEmail} onChange={(e) => setErrorEmail(e.target.value)} placeholder="errors@company.com" className={s2 && (!errorEmail || !emailValid) ? "border-destructive" : ""} />
+                <FieldError show={s2 && !errorEmail} message="Error log email is required." />
+                <FieldError show={s2 && !!errorEmail && !emailValid} message="Enter a valid email address." />
               </div>
               <div className="md:col-span-2">
                 <Label>Select Query</Label>
@@ -971,7 +1048,8 @@ function NewIntegrationPage() {
               </div>
               <div>
                 <Label>Error Log Email</Label>
-                <Input type="email" value={errorEmail} onChange={(e) => setErrorEmail(e.target.value)} placeholder="errors@company.com" />
+                <Input type="email" value={errorEmail} onChange={(e) => setErrorEmail(e.target.value)} placeholder="errors@company.com" className={s2 && errorEmail && !emailValid ? "border-destructive" : ""} />
+                <FieldError show={s2 && !!errorEmail && !emailValid} message="Enter a valid email address." />
               </div>
               <div className="md:col-span-2">
                 <Label>Next Integration</Label>
@@ -981,10 +1059,17 @@ function NewIntegrationPage() {
             </div>
           )}
           <div className="mt-6 flex items-center justify-between">
-            <Button variant="outline" onClick={() => setActive(1)}>
-              <ChevronRight className="h-4 w-4 rotate-180" /> Back
-            </Button>
-            <Button onClick={() => next(2)} disabled={!section2Valid}>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" onClick={() => setActive(1)}>
+                <ChevronRight className="h-4 w-4 rotate-180" /> Back
+              </Button>
+              {s2 && !section2Valid && (
+                <span className="text-xs text-destructive inline-flex items-center gap-1.5">
+                  <AlertCircle className="h-3.5 w-3.5" /> Complete required fields to continue.
+                </span>
+              )}
+            </div>
+            <Button onClick={() => next(2)}>
               Next <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -1023,7 +1108,14 @@ function NewIntegrationPage() {
 
             {action === "FTP" && <FtpPanel form={ftp} set={setFtp} />}
 
-            {(action === "HTTP Service" || action === "HTTP Service External") && (
+            {action === "HTTP Service" && (
+              <HttpPanel
+                form={httpDestinations[0]}
+                set={(v) => setHttpDestinations([v])}
+              />
+            )}
+
+            {action === "HTTP Service External" && (
               <div className="space-y-4">
                 {httpDestinations.map((h, i) => (
                   <div key={i}>
@@ -1038,12 +1130,12 @@ function NewIntegrationPage() {
                     <HttpPanel
                       form={h}
                       set={(v) => setHttpDestinations((ds) => ds.map((d, idx) => (idx === i ? v : d)))}
-                      removable={action === "HTTP Service External" && i > 0}
+                      removable={i > 0}
                       onRemove={() => setHttpDestinations((ds) => ds.filter((_, idx) => idx !== i))}
                     />
                   </div>
                 ))}
-                {action === "HTTP Service External" && (
+                {httpDestinations.length < 2 && (
                   <Button
                     variant="outline"
                     onClick={() => setHttpDestinations((ds) => [...ds, defaultHttp()])}
@@ -1064,93 +1156,251 @@ function NewIntegrationPage() {
                 value={pullApiUrl}
                 onChange={(e) => setPullApiUrl(e.target.value)}
                 placeholder="https://api.example.com/endpoint"
+                className={s3 && (!pullApiUrl.trim() || !pullUrlValid) ? "border-destructive" : ""}
               />
-              <p className="text-xs text-muted-foreground mt-1.5">Enter the API endpoint URL for pulling data from external source</p>
+              <FieldError show={s3 && !pullApiUrl.trim()} message="API URL is required." />
+              <FieldError show={s3 && !!pullApiUrl.trim() && !pullUrlValid} message="Enter a valid URL starting with http:// or https://" />
+              {!(s3 && (!pullApiUrl.trim() || !pullUrlValid)) && (
+                <p className="text-xs text-muted-foreground mt-1.5">Enter the API endpoint URL for pulling data from external source</p>
+              )}
             </div>
           </div>
         )}
         <div className="mt-6 flex items-center justify-between gap-3 flex-wrap">
-          <Button variant="outline" onClick={() => setActive(hasConfig ? 2 : 1)}>
-            <ChevronRight className="h-4 w-4 rotate-180" /> Back
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={() => setActive(hasConfig ? 2 : 1)}>
+              <ChevronRight className="h-4 w-4 rotate-180" /> Back
+            </Button>
+            {s3 && !section3Valid && (
+              <span className="text-xs text-destructive inline-flex items-center gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5" /> {isPush ? "Select an action and configure destination." : "Enter a valid API URL."}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={handleAddNextIntegration}>
               <Plus className="h-4 w-4" />
               Add Next Integration
             </Button>
-            <Button onClick={() => next(3)} disabled={!section3Valid}>
+            <Button onClick={() => next(3)}>
               Next <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </SectionCard>
 
-      {/* SECTION 4 — Field Mapping */}
+      {/* SECTION 4 — Mapping */}
       <SectionCard
         index={Sx.map}
-        title="Field Mapping"
-        subtitle="Map third-party fields to Optimo integration fields."
+        title="Mapping"
+        subtitle="Define how data fields are mapped between the source system and the destination system. Select fields from the source payload and connect them to the destination fields."
         status={statusFor(4)}
         isOpen={active === 4}
         onEdit={() => setActive(4)}
         summary={
           <div className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{rows.length}</span> field
-            {rows.length === 1 ? "" : "s"} mapped · type{" "}
-            <span className="font-medium text-foreground">{mappingType}</span>
+            <span className="font-medium text-foreground">{rows.length}</span> field{rows.length === 1 ? "" : "s"} mapped
           </div>
         }
       >
-        <div className="mt-4 space-y-5">
-          <div className="max-w-xs">
-            <Label>Mapping Type</Label>
-            <Select value={mappingType} onChange={setMappingType} options={["Inbound", "Outbound"] as const} />
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_1.5fr_1fr] gap-4">
+          {/* Source Payload */}
+          <div className="rounded-lg border border-border bg-card">
+            <div className="p-4 border-b border-border">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+                <span className="font-semibold text-foreground text-sm">Source Payload</span>
+              </div>
+              <p className="text-xs text-muted-foreground">Your system's data structure that will be sent to the 3rd party destination</p>
+            </div>
+            <div className="border-b border-border">
+              <div className="flex">
+                {(["JSON", "XML", "Upload"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setSourceTab(tab)}
+                    className={cn(
+                      "flex-1 text-xs font-medium py-2.5 transition-colors border-b-2",
+                      sourceTab === tab ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="p-3">
+              {sourceTab === "Upload" ? (
+                <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-input rounded-md cursor-pointer hover:border-primary/50 transition-colors">
+                  <Upload className="h-6 w-6 text-muted-foreground mb-2" />
+                  <span className="text-xs text-muted-foreground">Click to upload file</span>
+                  <input type="file" className="hidden" accept=".json,.xml" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => { setSourcePayload(ev.target?.result as string); setSourceTab("JSON"); };
+                      reader.readAsText(file);
+                    }
+                  }} />
+                </label>
+              ) : (
+                <textarea
+                  value={sourcePayload}
+                  onChange={(e) => setSourcePayload(e.target.value)}
+                  placeholder={`Paste your ${sourceTab} payload here...`}
+                  spellCheck={false}
+                  className="w-full h-48 px-3 py-2 rounded-md border border-input bg-background text-xs font-mono resize-none focus:outline-none focus:ring-2 focus:ring-ring/40 placeholder:text-muted-foreground/50"
+                />
+              )}
+            </div>
+            <div className="p-3 pt-0">
+              <button
+                onClick={parseSourcePayload}
+                disabled={!sourcePayload.trim()}
+                className="w-full h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <Zap className="h-3.5 w-3.5" />
+                Parse Payload
+              </button>
+            </div>
           </div>
 
-          <div className="rounded-lg border border-border overflow-hidden">
-            <div className="grid grid-cols-[1fr_1fr_140px_120px] bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground font-medium px-4 py-2.5">
-              <div>Third Party Field</div>
-              <div>Mapped To</div>
-              <div className="text-center">Mandatory</div>
-              <div className="text-right">Actions</div>
-            </div>
-            <div className="divide-y divide-border">
-              {rows.map((row, i) => (
-                <div key={row.id} className="grid grid-cols-[1fr_1fr_140px_120px] items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
-                  <Input value={row.third} onChange={(e) => updateRow(row.id, { third: e.target.value })} placeholder="e.g. customerName" />
-                  <Select value={row.field} onChange={(v) => updateRow(row.id, { field: v })} options={INT_FIELDS} placeholder="Select field" />
-                  <div className="flex justify-center">
-                    <Toggle checked={row.mandatory} onChange={(v) => updateRow(row.id, { mandatory: v })} />
-                  </div>
-                  <div className="flex items-center justify-end gap-1">
-                    {i === rows.length - 1 && (
-                      <button
-                        onClick={addRow}
-                        className="h-8 w-8 rounded-md border border-input hover:bg-accent hover:border-primary/40 flex items-center justify-center transition-colors"
-                        title="Add row"
-                      >
-                        <Plus className="h-4 w-4 text-foreground" />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => removeRow(row.id)}
-                      disabled={rows.length === 1 && i === 0 ? false : false}
-                      className="h-8 w-8 rounded-md border border-input hover:bg-destructive/10 hover:border-destructive/30 flex items-center justify-center transition-colors"
-                      title="Remove row"
-                    >
-                      <Minus className="h-4 w-4 text-destructive" />
-                    </button>
-                  </div>
+          {/* Field Mappings */}
+          <div className="rounded-lg border border-border bg-card flex flex-col">
+            <div className="p-4 border-b border-border">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+                  <span className="font-semibold text-foreground text-sm">Field Mappings</span>
                 </div>
-              ))}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">{rows.filter((r) => r.source && r.target).length} mapped</span>
+                  <button
+                    onClick={autoMap}
+                    className="h-7 px-3 rounded-md bg-emerald-500 text-white text-xs font-medium hover:bg-emerald-600 transition-colors flex items-center gap-1.5"
+                  >
+                    <Zap className="h-3 w-3" />
+                    Auto-Map
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">Map source fields to destination fields</p>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <div className="grid grid-cols-[1fr_1fr_70px] text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-4 py-2 border-b border-border bg-muted/30">
+                <div>Source Field</div>
+                <div>Target Field</div>
+                <div>Type</div>
+              </div>
+              <div className="divide-y divide-border">
+                {rows.length === 0 && (
+                  <div className="px-4 py-8 text-center text-xs text-muted-foreground">
+                    No mappings yet. Parse a source payload or add a mapping manually.
+                  </div>
+                )}
+                {rows.map((row) => (
+                  <div key={row.id} className="grid grid-cols-[1fr_1fr_70px] items-center gap-2 px-4 py-2 hover:bg-muted/30 transition-colors group">
+                    <Select value={row.source} onChange={(v) => updateRow(row.id, { source: v })} options={SOURCE_FIELDS} placeholder="Select source" />
+                    <Select value={row.target} onChange={(v) => updateRow(row.id, { target: v })} options={TARGET_FIELDS} placeholder="Select target" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">{row.type}</span>
+                      <button
+                        onClick={() => removeRow(row.id)}
+                        className="h-6 w-6 rounded hover:bg-destructive/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3 text-destructive" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="p-3 border-t border-border">
+              <button
+                onClick={addRow}
+                className="w-full h-9 rounded-md bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Mapping
+              </button>
+            </div>
+          </div>
+
+          {/* Target Payload */}
+          <div className="rounded-lg border border-border bg-card">
+            <div className="p-4 border-b border-border">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                <span className="font-semibold text-foreground text-sm">Target Payload</span>
+              </div>
+              <p className="text-xs text-muted-foreground">3rd party system's expected data structure (destination format)</p>
+            </div>
+            <div className="border-b border-border">
+              <div className="flex">
+                {(["JSON", "XML", "Upload"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setTargetTab(tab)}
+                    className={cn(
+                      "flex-1 text-xs font-medium py-2.5 transition-colors border-b-2",
+                      targetTab === tab ? "border-emerald-500 text-emerald-600" : "border-transparent text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="p-3">
+              {targetTab === "Upload" ? (
+                <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed border-input rounded-md cursor-pointer hover:border-emerald-500/50 transition-colors">
+                  <Upload className="h-6 w-6 text-muted-foreground mb-2" />
+                  <span className="text-xs text-muted-foreground">Click to upload file</span>
+                  <input type="file" className="hidden" accept=".json,.xml" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (ev) => { setTargetPayload(ev.target?.result as string); setTargetTab("JSON"); };
+                      reader.readAsText(file);
+                    }
+                  }} />
+                </label>
+              ) : (
+                <textarea
+                  value={targetPayload}
+                  onChange={(e) => setTargetPayload(e.target.value)}
+                  placeholder={`Paste your target ${targetTab} payload here...`}
+                  spellCheck={false}
+                  className="w-full h-48 px-3 py-2 rounded-md border border-input bg-background text-xs font-mono resize-none focus:outline-none focus:ring-2 focus:ring-ring/40 placeholder:text-muted-foreground/50"
+                />
+              )}
+            </div>
+            <div className="p-3 pt-0">
+              <button
+                onClick={parseTargetPayload}
+                disabled={!targetPayload.trim()}
+                className="w-full h-9 rounded-md bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <Zap className="h-3.5 w-3.5" />
+                Parse Payload
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Footer */}
         <div className="mt-6 flex items-center justify-between">
-          <Button variant="outline" onClick={() => setActive(3)}>
-            <ChevronRight className="h-4 w-4 rotate-180" /> Back
-          </Button>
-          <Button onClick={handleSubmit} disabled={!section4Valid}>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" onClick={() => setActive(3)}>
+              <ChevronRight className="h-4 w-4 rotate-180" /> Back
+            </Button>
+            {s4 && !section4Valid && (
+              <span className="text-xs text-destructive inline-flex items-center gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5" /> Add at least one complete mapping.
+              </span>
+            )}
+          </div>
+          <Button onClick={() => { setAttempted((s) => new Set([...s, 4])); if (section4Valid) handleSubmit(); }}>
             <Check className="h-4 w-4" />
             Submit Integration
           </Button>
