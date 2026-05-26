@@ -88,12 +88,6 @@ function ConfigurationsListPage() {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  const stats = [
-    { label: "Total Integrations", value: ROWS.length, change: "+2 this week" },
-    { label: "Active", value: ROWS.filter((r) => r.status === "Active").length, change: "98.4% uptime" },
-    { label: "Inactive", value: ROWS.filter((r) => r.status === "Inactive").length, change: "—" },
-    { label: "In Error", value: ROWS.filter((r) => r.status === "Error").length, change: "Needs attention" },
-  ];
 
   return (
     <div className="min-h-screen bg-muted/40">
@@ -153,18 +147,8 @@ function ConfigurationsListPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s) => (
-          <div key={s.label} className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-            <div className="text-xs uppercase tracking-wide text-muted-foreground font-medium">{s.label}</div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-foreground">{s.value}</span>
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">{s.change}</div>
-          </div>
-        ))}
-      </div>
+
+
 
       {/* Filters bar */}
       <div className="rounded-xl border border-border bg-card shadow-[var(--shadow-soft)]">
