@@ -68,7 +68,7 @@ const StatusBadge = ({ status }: { status: Status }) => {
 function ConfigurationsListPage() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<Status | "All">("All");
-  const [typeFilter, setTypeFilter] = useState<Row["type"] | "All">("All");
+  const [typeFilter, setTypeFilter] = useState<IntegrationType | "All">("All");
   const [showFilter, setShowFilter] = useState(false);
   const [showStatus, setShowStatus] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -79,7 +79,7 @@ function ConfigurationsListPage() {
     return ROWS.filter(
       (r) =>
         (statusFilter === "All" || r.status === statusFilter) &&
-        (typeFilter === "All" || r.type === typeFilter) &&
+        (typeFilter === "All" || r.integrationType === typeFilter) &&
         (query === "" || r.name.toLowerCase().includes(query.toLowerCase()) || r.id.includes(query)),
     );
   }, [query, statusFilter, typeFilter]);
