@@ -107,7 +107,35 @@ function ConfigurationsListPage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-[1400px] mx-auto">
+    <div className="min-h-screen bg-muted/40">
+      <Toaster richColors position="top-right" />
+      {/* Top Header */}
+      <header className="h-16 sticky top-0 z-30 bg-card/90 backdrop-blur border-b border-border">
+        <div className="max-w-[1400px] mx-auto h-full flex items-center justify-between px-6">
+          <div className="flex items-center gap-8">
+            <Link to="/configurations" className="text-xl font-black tracking-tight text-foreground">
+              OPTIMO
+            </Link>
+            <nav className="hidden md:flex items-center gap-1 text-sm">
+              <span className="px-3 py-1.5 rounded-md bg-accent text-accent-foreground font-medium">
+                Integration Configuration
+              </span>
+            </nav>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-xs font-semibold">
+              OU
+            </div>
+            <div className="text-sm hidden sm:block">
+              <div className="font-medium text-foreground leading-tight">Optimo User</div>
+              <div className="text-xs text-muted-foreground leading-tight">Administrator</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="px-6 py-8">
+        <div className="space-y-6 max-w-[1400px] mx-auto">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
         <Home className="h-3.5 w-3.5" />
