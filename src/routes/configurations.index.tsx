@@ -376,4 +376,3 @@ function ConfigurationsListPage() {
     </div>
   );
 }
-}
