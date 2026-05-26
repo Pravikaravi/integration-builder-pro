@@ -21,14 +21,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AddIntegrationModal } from "@/components/integrations/AddIntegrationModal";
-import { AppLayout } from "@/components/AppLayout";
+import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/configurations/")({
-  component: () => (
-    <AppLayout>
-      <ConfigurationsListPage />
-    </AppLayout>
-  ),
+  component: ConfigurationsListPage,
 });
 
 type Status = "Active" | "Inactive" | "Error";
