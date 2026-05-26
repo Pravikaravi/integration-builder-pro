@@ -8,7 +8,6 @@ import {
   ChevronRight,
   ChevronLeft,
   MoreVertical,
-  Download,
   ArrowUpDown,
   Home,
 } from "lucide-react";
@@ -136,10 +135,6 @@ function ConfigurationsListPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
           <Button size="sm" onClick={() => setModalOpen(true)} className="shadow-sm">
             <Plus className="h-4 w-4" />
             Add Integration

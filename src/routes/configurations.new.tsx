@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   ArrowLeft,
   ChevronDown,
@@ -76,9 +76,32 @@ function Select<T extends string>({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+
+  const updatePos = useCallback(() => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      updatePos();
+      window.addEventListener("scroll", updatePos, true);
+      window.addEventListener("resize", updatePos);
+      return () => {
+        window.removeEventListener("scroll", updatePos, true);
+        window.removeEventListener("resize", updatePos);
+      };
+    }
+  }, [open, updatePos]);
+
   return (
     <div className={cn("relative", className)}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
@@ -94,8 +117,11 @@ function Select<T extends string>({
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute z-20 mt-1.5 w-full rounded-md border border-border bg-popover shadow-lg py-1 max-h-64 overflow-y-auto animate-in fade-in-0 zoom-in-95">
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-50 rounded-md border border-border bg-popover shadow-lg py-1 max-h-64 overflow-y-auto animate-in fade-in-0 zoom-in-95"
+            style={{ top: pos.top, left: pos.left, width: pos.width }}
+          >
             {options.map((opt) => (
               <button
                 key={opt}
@@ -359,8 +385,8 @@ function SectionCard({
   return (
     <div
       className={cn(
-        "rounded-xl border bg-card shadow-[var(--shadow-soft)] transition-all overflow-hidden animate-fade-in",
-        isOpen ? "border-primary/40 ring-1 ring-primary/20" : "border-border",
+        "rounded-xl border bg-card shadow-[var(--shadow-soft)] transition-all animate-fade-in",
+        isOpen ? "border-primary/40 ring-1 ring-primary/20 overflow-visible" : "border-border overflow-hidden",
       )}
     >
       <div className="flex items-center gap-4 px-6 py-4">
@@ -398,7 +424,7 @@ function SectionCard({
           isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
         )}
       >
-        <div className="overflow-hidden">
+        <div className={cn(isOpen ? "overflow-visible" : "overflow-hidden")}>
           <div className="px-6 pb-6 pt-2 border-t border-border">{children}</div>
         </div>
       </div>
@@ -416,6 +442,17 @@ const ACTIONS = ["HTTP Service", "HTTP Service External", "FTP"] as const;
 const METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH"] as const;
 const OPERATIONS = ["api/v4.1/bookings", "api/v4.1/contact"] as const;
 const INT_FIELDS = ["booking.id", "booking.guestName", "booking.checkIn", "booking.total", "contact.email", "contact.phone"];
+const EXISTING_INTEGRATIONS = [
+  "Salesforce - HTTP",
+  "Optimo Test Salesforce",
+  "Salesforce_Credentials",
+  "Salesforce_HTTP",
+  "FTP check",
+  "Check Booking",
+  "Optimo_Salesforce_Credentials",
+  "Booking Get",
+  "Guest Document Upload",
+];
 
 /* ─────────────── destination subforms ─────────────── */
 
@@ -585,7 +622,7 @@ function NewIntegrationPage() {
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
 
-  // Section 2 (Push only)
+  // Section 2 (Push config)
   const [entityType, setEntityType] = useState<string>("");
   const [sameAsCalling, setSameAsCalling] = useState(false);
   const [trigger, setTrigger] = useState<string>("");
@@ -593,10 +630,16 @@ function NewIntegrationPage() {
   const [errorEmail, setErrorEmail] = useState("");
   const [query, setQuery] = useState("SELECT id, guest_name, check_in, total\nFROM bookings\nWHERE status = 'CONFIRMED';");
 
-  // Section 3
+  // Section 2 (Pull config)
+  const [nextIntegration, setNextIntegration] = useState<string>("");
+
+  // Section 3 (Push destination)
   const [action, setAction] = useState<typeof ACTIONS[number] | "">("");
   const [ftp, setFtp] = useState<FtpForm>(defaultFtp);
   const [httpDestinations, setHttpDestinations] = useState<HttpForm[]>([defaultHttp()]);
+
+  // Section 3 (Pull destination)
+  const [pullApiUrl, setPullApiUrl] = useState("");
 
   // Section 4
   const [mappingType, setMappingType] = useState<string>("Outbound");
@@ -612,11 +655,12 @@ function NewIntegrationPage() {
 
   // Validation
   const section1Valid = name.trim() && type && category && contact;
-  const section2Valid = !hasConfig ? true : entityType && trigger && errorEmail;
-  const section3Valid =
-    action === "FTP" ? ftp.inbound || ftp.outbound :
-    action === "HTTP Service" || action === "HTTP Service External" ? httpDestinations[0]?.baseUrl :
-    false;
+  const section2Valid = !hasConfig ? true : isPush ? entityType && trigger && errorEmail : true;
+  const section3Valid = isPush
+    ? (action === "FTP" ? ftp.inbound || ftp.outbound :
+       action === "HTTP Service" || action === "HTTP Service External" ? httpDestinations[0]?.baseUrl :
+       false)
+    : !!pullApiUrl.trim();
   const section4Valid = rows.length > 0 && rows.every((r) => r.third && r.field);
 
   const next = (n: number) => {
@@ -656,9 +700,11 @@ function NewIntegrationPage() {
     setMaxAttempts(3);
     setErrorEmail("");
     setSameAsCalling(false);
+    setNextIntegration("");
     setAction("");
     setFtp(defaultFtp());
     setHttpDestinations([defaultHttp()]);
+    setPullApiUrl("");
     setRows([
       { id: crypto.randomUUID(), third: "guestName", field: "booking.guestName", mandatory: true },
       { id: crypto.randomUUID(), third: "checkInDate", field: "booking.checkIn", mandatory: true },
@@ -854,60 +900,86 @@ function NewIntegrationPage() {
         </div>
       </SectionCard>
 
-      {/* SECTION 2 — Configuration (Push only) */}
+      {/* SECTION 2 — Configuration */}
       {hasConfig && (
         <SectionCard
           index={2}
           title="Configuration"
-          subtitle="Define when and how this push integration fires."
+          subtitle={isPush ? "Define when and how this push integration fires." : "Configure entity types and trigger settings"}
           status={statusFor(2)}
           isOpen={active === 2}
           onEdit={() => setActive(2)}
           summary={
-            <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
-              <div><dt className="text-xs text-muted-foreground">Entity</dt><dd className="font-medium text-foreground">{entityType}</dd></div>
-              <div><dt className="text-xs text-muted-foreground">Trigger</dt><dd className="font-medium text-foreground">{trigger}</dd></div>
-              <div><dt className="text-xs text-muted-foreground">Max Attempts</dt><dd className="font-medium text-foreground">{maxAttempts}</dd></div>
-              <div><dt className="text-xs text-muted-foreground">Error Email</dt><dd className="font-medium text-foreground">{errorEmail}</dd></div>
-            </dl>
+            isPush ? (
+              <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
+                <div><dt className="text-xs text-muted-foreground">Entity</dt><dd className="font-medium text-foreground">{entityType}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Trigger</dt><dd className="font-medium text-foreground">{trigger}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Max Attempts</dt><dd className="font-medium text-foreground">{maxAttempts}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Error Email</dt><dd className="font-medium text-foreground">{errorEmail}</dd></div>
+              </dl>
+            ) : (
+              <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+                <div><dt className="text-xs text-muted-foreground">Max Attempts</dt><dd className="font-medium text-foreground">{maxAttempts}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Error Email</dt><dd className="font-medium text-foreground">{errorEmail}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Next Integration</dt><dd className="font-medium text-foreground">{nextIntegration || "—"}</dd></div>
+              </dl>
+            )
           }
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
-            <div>
-              <Label required>Entity Type</Label>
-              <Select value={entityType} onChange={setEntityType} options={ENTITY_TYPES} placeholder="Select entity" />
-            </div>
-            <div>
-              <Label required>Trigger Type</Label>
-              <Select value={trigger} onChange={setTrigger} options={TRIGGERS} placeholder="Select trigger" />
-            </div>
-            <div className="md:col-span-2">
-              <Checkbox checked={sameAsCalling} onChange={setSameAsCalling} label="Same as Calling Entity Type" />
-            </div>
-            <div>
-              <Label>Max Re-Execution Attempts</Label>
-              <Input type="number" min={0} value={maxAttempts} onChange={(e) => setMaxAttempts(Number(e.target.value))} />
-            </div>
-            <div>
-              <Label required>Error Log Email</Label>
-              <Input type="email" value={errorEmail} onChange={(e) => setErrorEmail(e.target.value)} placeholder="errors@company.com" />
-            </div>
-            <div className="md:col-span-2">
-              <Label>Select Query</Label>
-              <div className="rounded-md border border-input bg-foreground/95 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-2 border-b border-background/10 text-xs text-background/60 font-sans">
-                  <span>SQL</span>
-                  <span>{query.split("\n").length} lines</span>
+          {isPush ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
+              <div>
+                <Label required>Entity Type</Label>
+                <Select value={entityType} onChange={setEntityType} options={ENTITY_TYPES} placeholder="Select entity" />
+              </div>
+              <div>
+                <Label required>Trigger Type</Label>
+                <Select value={trigger} onChange={setTrigger} options={TRIGGERS} placeholder="Select trigger" />
+              </div>
+              <div className="md:col-span-2">
+                <Checkbox checked={sameAsCalling} onChange={setSameAsCalling} label="Same as Calling Entity Type" />
+              </div>
+              <div>
+                <Label>Max Re-Execution Attempts</Label>
+                <Input type="number" min={0} value={maxAttempts} onChange={(e) => setMaxAttempts(Number(e.target.value))} />
+              </div>
+              <div>
+                <Label required>Error Log Email</Label>
+                <Input type="email" value={errorEmail} onChange={(e) => setErrorEmail(e.target.value)} placeholder="errors@company.com" />
+              </div>
+              <div className="md:col-span-2">
+                <Label>Select Query</Label>
+                <div className="rounded-md border border-input bg-foreground/95 overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-background/10 text-xs text-background/60 font-sans">
+                    <span>SQL</span>
+                    <span>{query.split("\n").length} lines</span>
+                  </div>
+                  <textarea
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    spellCheck={false}
+                    className="w-full bg-transparent text-background font-mono text-sm p-4 min-h-[160px] resize-y focus:outline-none"
+                  />
                 </div>
-                <textarea
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  spellCheck={false}
-                  className="w-full bg-transparent text-background font-mono text-sm p-4 min-h-[160px] resize-y focus:outline-none"
-                />
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
+              <div>
+                <Label>Max Re-Execution Attempts</Label>
+                <Input type="number" min={0} value={maxAttempts} onChange={(e) => setMaxAttempts(Number(e.target.value))} />
+              </div>
+              <div>
+                <Label>Error Log Email</Label>
+                <Input type="email" value={errorEmail} onChange={(e) => setErrorEmail(e.target.value)} placeholder="errors@company.com" />
+              </div>
+              <div className="md:col-span-2">
+                <Label>Next Integration</Label>
+                <Select value={nextIntegration} onChange={setNextIntegration} options={EXISTING_INTEGRATIONS} placeholder="Select next integration" />
+                <p className="text-xs text-muted-foreground mt-1.5">Select an integration to chain after this one</p>
+              </div>
+            </div>
+          )}
           <div className="mt-6 flex items-center justify-between">
             <Button variant="outline" onClick={() => setActive(1)}>
               <ChevronRight className="h-4 w-4 rotate-180" /> Back
@@ -922,67 +994,87 @@ function NewIntegrationPage() {
       {/* SECTION 3 — Destination */}
       <SectionCard
         index={Sx.dest}
-        title="Destination Configuration"
-        subtitle="Where Optimo will deliver the payload."
+        title={isPush ? "Destination Configuration" : "Destination"}
+        subtitle={isPush ? "Where Optimo will deliver the payload." : "Configure API URL for pulling data"}
         status={statusFor(3)}
         isOpen={active === 3}
         onEdit={() => setActive(3)}
         summary={
-          <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 text-sm">
-            <div><dt className="text-xs text-muted-foreground">Action</dt><dd className="font-medium text-foreground">{action}</dd></div>
-            {action !== "FTP" && (
-              <div><dt className="text-xs text-muted-foreground">Destinations</dt><dd className="font-medium text-foreground">{httpDestinations.length}</dd></div>
-            )}
-          </dl>
+          isPush ? (
+            <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+              <div><dt className="text-xs text-muted-foreground">Action</dt><dd className="font-medium text-foreground">{action}</dd></div>
+              {action !== "FTP" && (
+                <div><dt className="text-xs text-muted-foreground">Destinations</dt><dd className="font-medium text-foreground">{httpDestinations.length}</dd></div>
+              )}
+            </dl>
+          ) : (
+            <dl className="grid grid-cols-1 gap-y-2 text-sm">
+              <div><dt className="text-xs text-muted-foreground">API URL</dt><dd className="font-medium text-foreground">{pullApiUrl || "—"}</dd></div>
+            </dl>
+          )
         }
       >
-        <div className="mt-4 space-y-5">
-          <div className="max-w-md">
-            <Label required>Integration Action</Label>
-            <Select value={action} onChange={(v) => setAction(v)} options={ACTIONS} placeholder="Select action" />
-          </div>
-
-          {action === "FTP" && <FtpPanel form={ftp} set={setFtp} />}
-
-          {(action === "HTTP Service" || action === "HTTP Service External") && (
-            <div className="space-y-4">
-              {httpDestinations.map((h, i) => (
-                <div key={i}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-sm font-medium text-foreground inline-flex items-center gap-2">
-                      <span className="h-5 w-5 rounded bg-accent text-accent-foreground text-xs flex items-center justify-center font-semibold">
-                        {i + 1}
-                      </span>
-                      Destination {i + 1}
-                    </div>
-                  </div>
-                  <HttpPanel
-                    form={h}
-                    set={(v) => setHttpDestinations((ds) => ds.map((d, idx) => (idx === i ? v : d)))}
-                    removable={action === "HTTP Service External" && i > 0}
-                    onRemove={() => setHttpDestinations((ds) => ds.filter((_, idx) => idx !== i))}
-                  />
-                </div>
-              ))}
-              {action === "HTTP Service External" && (
-                <Button
-                  variant="outline"
-                  onClick={() => setHttpDestinations((ds) => [...ds, defaultHttp()])}
-                  className="w-full border-dashed"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Next Destination
-                </Button>
-              )}
+        {isPush ? (
+          <div className="mt-4 space-y-5">
+            <div className="max-w-md">
+              <Label required>Integration Action</Label>
+              <Select value={action} onChange={(v) => setAction(v)} options={ACTIONS} placeholder="Select action" />
             </div>
-          )}
-        </div>
+
+            {action === "FTP" && <FtpPanel form={ftp} set={setFtp} />}
+
+            {(action === "HTTP Service" || action === "HTTP Service External") && (
+              <div className="space-y-4">
+                {httpDestinations.map((h, i) => (
+                  <div key={i}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm font-medium text-foreground inline-flex items-center gap-2">
+                        <span className="h-5 w-5 rounded bg-accent text-accent-foreground text-xs flex items-center justify-center font-semibold">
+                          {i + 1}
+                        </span>
+                        Destination {i + 1}
+                      </div>
+                    </div>
+                    <HttpPanel
+                      form={h}
+                      set={(v) => setHttpDestinations((ds) => ds.map((d, idx) => (idx === i ? v : d)))}
+                      removable={action === "HTTP Service External" && i > 0}
+                      onRemove={() => setHttpDestinations((ds) => ds.filter((_, idx) => idx !== i))}
+                    />
+                  </div>
+                ))}
+                {action === "HTTP Service External" && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setHttpDestinations((ds) => [...ds, defaultHttp()])}
+                    className="w-full border-dashed"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Next Destination
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="mt-4">
+            <div>
+              <Label required>API URL</Label>
+              <Input
+                value={pullApiUrl}
+                onChange={(e) => setPullApiUrl(e.target.value)}
+                placeholder="https://api.example.com/endpoint"
+              />
+              <p className="text-xs text-muted-foreground mt-1.5">Enter the API endpoint URL for pulling data from external source</p>
+            </div>
+          </div>
+        )}
         <div className="mt-6 flex items-center justify-between gap-3 flex-wrap">
           <Button variant="outline" onClick={() => setActive(hasConfig ? 2 : 1)}>
             <ChevronRight className="h-4 w-4 rotate-180" /> Back
           </Button>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleAddNextIntegration} disabled={!section3Valid}>
+            <Button variant="outline" onClick={handleAddNextIntegration}>
               <Plus className="h-4 w-4" />
               Add Next Integration
             </Button>
