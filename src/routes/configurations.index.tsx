@@ -194,7 +194,7 @@ function ConfigurationsListPage() {
             </button>
             {showFilter && (
               <div className="absolute right-0 mt-2 w-44 rounded-md border border-border bg-popover shadow-lg z-20 py-1 animate-in fade-in-0 zoom-in-95">
-                {(["All", "Push", "Pull", "File", "Document"] as const).map((opt) => (
+                {(["All", "Push Integration", "Pull Integration", "File Integration", "Document Integration"] as const).map((opt) => (
                   <button
                     key={opt}
                     onClick={() => {
