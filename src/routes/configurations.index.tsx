@@ -252,53 +252,42 @@ function ConfigurationsListPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground bg-muted/50">
+                <th className="px-5 py-3 font-medium w-10">
+                  <input type="checkbox" className="h-4 w-4 rounded border-input accent-primary" />
+                </th>
                 <th className="px-5 py-3 font-medium">
                   <button className="inline-flex items-center gap-1 hover:text-foreground">
-                    Integration Name <ArrowUpDown className="h-3 w-3" />
+                    Name <ArrowUpDown className="h-3 w-3" />
                   </button>
                 </th>
-                <th className="px-5 py-3 font-medium">Type</th>
-                <th className="px-5 py-3 font-medium">Category</th>
+                <th className="px-5 py-3 font-medium">Entity</th>
+                <th className="px-5 py-3 font-medium">Integration Type</th>
+                <th className="px-5 py-3 font-medium">Trigger Type</th>
                 <th className="px-5 py-3 font-medium">Status</th>
-                <th className="px-5 py-3 font-medium">Last Updated</th>
-                <th className="px-5 py-3 font-medium">Point of Contact</th>
-                <th className="px-5 py-3 font-medium text-right">Actions</th>
+                <th className="px-5 py-3 font-medium">Action Type</th>
+                <th className="px-5 py-3 font-medium w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {visible.map((r) => (
                 <tr key={r.id} className="hover:bg-muted/40 transition-colors group">
                   <td className="px-5 py-3.5">
-                    <div className="font-medium text-foreground">{r.name}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{r.id}</div>
+                    <input type="checkbox" className="h-4 w-4 rounded border-input accent-primary" />
                   </td>
-                  <td className="px-5 py-3.5"><TypePill type={r.type} /></td>
-                  <td className="px-5 py-3.5 text-foreground">{r.category}</td>
+                  <td className="px-5 py-3.5">
+                    <button className="font-medium text-primary hover:underline text-left">
+                      {r.name}
+                    </button>
+                  </td>
+                  <td className="px-5 py-3.5 text-foreground">{r.entity}</td>
+                  <td className="px-5 py-3.5 text-foreground">{r.integrationType}</td>
+                  <td className="px-5 py-3.5 text-foreground">{r.triggerType}</td>
                   <td className="px-5 py-3.5"><StatusBadge status={r.status} /></td>
-                  <td className="px-5 py-3.5 text-muted-foreground">{r.updated}</td>
+                  <td className="px-5 py-3.5 text-foreground">{r.actionType}</td>
                   <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-[10px] font-semibold">
-                        {r.contact.slice(0, 2).toUpperCase()}
-                      </div>
-                      <span className="text-muted-foreground">{r.contact}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center justify-end gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-                      <button className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center" title="View">
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                      <button className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center" title="Edit">
-                        <Pencil className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                      <button className="h-8 w-8 rounded-md hover:bg-destructive/10 flex items-center justify-center" title="Delete">
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </button>
-                      <button className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center">
-                        <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                    </div>
+                    <button className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center">
+                      <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                    </button>
                   </td>
                 </tr>
               ))}
