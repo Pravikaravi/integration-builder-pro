@@ -371,6 +371,9 @@ function ConfigurationsListPage() {
       </div>
 
       <AddIntegrationModal open={modalOpen} onClose={() => setModalOpen(false)} />
+        </div>
+      </div>
     </div>
   );
+}
 }
