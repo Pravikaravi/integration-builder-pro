@@ -63,15 +63,7 @@ const StatusBadge = ({ status }: { status: Status }) => {
 };
 
 
-const TypePill = ({ type }: { type: Row["type"] }) => {
-  const cls = {
-    Push: "bg-accent text-accent-foreground",
-    Pull: "bg-info/10 text-info",
-    File: "bg-primary/15 text-primary-foreground/90",
-    Document: "bg-muted text-foreground",
-  }[type];
-  return <span className={cn("inline-flex px-2 py-0.5 rounded text-xs font-medium", cls)}>{type}</span>;
-};
+
 
 function ConfigurationsListPage() {
   const [query, setQuery] = useState("");
