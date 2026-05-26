@@ -22,43 +22,46 @@ export const Route = createFileRoute("/configurations/")({
 });
 
 type Status = "Active" | "Inactive" | "Error";
+type IntegrationType = "Push Integration" | "Pull Integration" | "File Integration" | "Document Integration";
+type Entity = "Booking" | "Documents" | "Guest" | "Invoice" | "Lead" | "Ticket";
+type TriggerType = "Change" | "CreateOrChange" | "Create" | "Delete";
+type ActionType = "HTTP Service" | "HTTP Service External" | "FTP" | "SFTP" | "Webhook";
 
 interface Row {
   id: string;
   name: string;
-  type: "Push" | "Pull" | "File" | "Document";
-  category: string;
+  entity: Entity;
+  integrationType: IntegrationType;
+  triggerType: TriggerType;
   status: Status;
-  updated: string;
-  contact: string;
+  actionType: ActionType;
 }
 
 const ROWS: Row[] = [
-  { id: "INT-1042", name: "Salesforce CRM Sync", type: "Push", category: "CRM", status: "Active", updated: "2 hours ago", contact: "admin@mail.com" },
-  { id: "INT-1041", name: "Marriott PMS Inbound", type: "Pull", category: "PMS", status: "Active", updated: "5 hours ago", contact: "test1@mail.com" },
-  { id: "INT-1039", name: "Nightly Revenue Export", type: "File", category: "Finance", status: "Active", updated: "Yesterday", contact: "test2@mail.com" },
-  { id: "INT-1037", name: "Guest Document Upload", type: "Document", category: "Compliance", status: "Inactive", updated: "3 days ago", contact: "admin@mail.com" },
-  { id: "INT-1035", name: "Stripe Payments Webhook", type: "Push", category: "Payments", status: "Active", updated: "4 days ago", contact: "test1@mail.com" },
-  { id: "INT-1031", name: "HubSpot Lead Pull", type: "Pull", category: "Marketing", status: "Error", updated: "6 days ago", contact: "test2@mail.com" },
-  { id: "INT-1028", name: "QuickBooks Invoice Sync", type: "Push", category: "Finance", status: "Active", updated: "1 week ago", contact: "admin@mail.com" },
-  { id: "INT-1024", name: "Zendesk Ticket Mirror", type: "Pull", category: "Support", status: "Inactive", updated: "2 weeks ago", contact: "test1@mail.com" },
-  { id: "INT-1019", name: "Daily Audit File Drop", type: "File", category: "Finance", status: "Active", updated: "2 weeks ago", contact: "test2@mail.com" },
+  { id: "INT-1042", name: "Salesforce - HTTP", entity: "Booking", integrationType: "Push Integration", triggerType: "Change", status: "Active", actionType: "HTTP Service" },
+  { id: "INT-1041", name: "Optimo Test Salesforce", entity: "Booking", integrationType: "Push Integration", triggerType: "Change", status: "Active", actionType: "HTTP Service External" },
+  { id: "INT-1039", name: "Salesforce_Credentials", entity: "Booking", integrationType: "Push Integration", triggerType: "Change", status: "Active", actionType: "HTTP Service External" },
+  { id: "INT-1037", name: "Salesforce_HTTP", entity: "Booking", integrationType: "Push Integration", triggerType: "CreateOrChange", status: "Active", actionType: "HTTP Service" },
+  { id: "INT-1035", name: "FTP check", entity: "Booking", integrationType: "Push Integration", triggerType: "CreateOrChange", status: "Active", actionType: "FTP" },
+  { id: "INT-1031", name: "Check Booking", entity: "Booking", integrationType: "Push Integration", triggerType: "CreateOrChange", status: "Active", actionType: "HTTP Service External" },
+  { id: "INT-1028", name: "Optimo_Salesforce_Credentials", entity: "Documents", integrationType: "Push Integration", triggerType: "CreateOrChange", status: "Active", actionType: "HTTP Service" },
+  { id: "INT-1024", name: "Booking Get", entity: "Booking", integrationType: "Push Integration", triggerType: "Change", status: "Active", actionType: "HTTP Service External" },
+  { id: "INT-1019", name: "Guest Document Upload", entity: "Documents", integrationType: "Document Integration", triggerType: "Create", status: "Inactive", actionType: "SFTP" },
 ];
 
 const StatusBadge = ({ status }: { status: Status }) => {
-  const map = {
-    Active: { cls: "bg-success/10 text-success border-success/20", Icon: CheckCircle2 },
-    Inactive: { cls: "bg-muted text-muted-foreground border-border", Icon: PauseCircle },
-    Error: { cls: "bg-destructive/10 text-destructive border-destructive/20", Icon: AlertCircle },
-  } as const;
-  const { cls, Icon } = map[status];
+  const cls = {
+    Active: "bg-success/10 text-success border-success/30",
+    Inactive: "bg-muted text-muted-foreground border-border",
+    Error: "bg-destructive/10 text-destructive border-destructive/30",
+  }[status];
   return (
-    <span className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border", cls)}>
-      <Icon className="h-3 w-3" />
+    <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border", cls)}>
       {status}
     </span>
   );
 };
+
 
 const TypePill = ({ type }: { type: Row["type"] }) => {
   const cls = {
