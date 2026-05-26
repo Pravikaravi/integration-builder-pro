@@ -88,12 +88,6 @@ function ConfigurationsListPage() {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  const stats = [
-    { label: "Total Integrations", value: ROWS.length, change: "+2 this week" },
-    { label: "Active", value: ROWS.filter((r) => r.status === "Active").length, change: "98.4% uptime" },
-    { label: "Inactive", value: ROWS.filter((r) => r.status === "Inactive").length, change: "—" },
-    { label: "In Error", value: ROWS.filter((r) => r.status === "Error").length, change: "Needs attention" },
-  ];
 
   return (
     <div className="min-h-screen bg-muted/40">
