@@ -7,15 +7,9 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronLeft,
-  Eye,
-  Pencil,
-  Trash2,
-  MoreHorizontal,
+  MoreVertical,
   Download,
   ArrowUpDown,
-  CheckCircle2,
-  PauseCircle,
-  AlertCircle,
   Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,58 +22,53 @@ export const Route = createFileRoute("/configurations/")({
 });
 
 type Status = "Active" | "Inactive" | "Error";
+type IntegrationType = "Push Integration" | "Pull Integration" | "File Integration" | "Document Integration";
+type Entity = "Booking" | "Documents" | "Guest" | "Invoice" | "Lead" | "Ticket";
+type TriggerType = "Change" | "CreateOrChange" | "Create" | "Delete";
+type ActionType = "HTTP Service" | "HTTP Service External" | "FTP" | "SFTP" | "Webhook";
 
 interface Row {
   id: string;
   name: string;
-  type: "Push" | "Pull" | "File" | "Document";
-  category: string;
+  entity: Entity;
+  integrationType: IntegrationType;
+  triggerType: TriggerType;
   status: Status;
-  updated: string;
-  contact: string;
+  actionType: ActionType;
 }
 
 const ROWS: Row[] = [
-  { id: "INT-1042", name: "Salesforce CRM Sync", type: "Push", category: "CRM", status: "Active", updated: "2 hours ago", contact: "admin@mail.com" },
-  { id: "INT-1041", name: "Marriott PMS Inbound", type: "Pull", category: "PMS", status: "Active", updated: "5 hours ago", contact: "test1@mail.com" },
-  { id: "INT-1039", name: "Nightly Revenue Export", type: "File", category: "Finance", status: "Active", updated: "Yesterday", contact: "test2@mail.com" },
-  { id: "INT-1037", name: "Guest Document Upload", type: "Document", category: "Compliance", status: "Inactive", updated: "3 days ago", contact: "admin@mail.com" },
-  { id: "INT-1035", name: "Stripe Payments Webhook", type: "Push", category: "Payments", status: "Active", updated: "4 days ago", contact: "test1@mail.com" },
-  { id: "INT-1031", name: "HubSpot Lead Pull", type: "Pull", category: "Marketing", status: "Error", updated: "6 days ago", contact: "test2@mail.com" },
-  { id: "INT-1028", name: "QuickBooks Invoice Sync", type: "Push", category: "Finance", status: "Active", updated: "1 week ago", contact: "admin@mail.com" },
-  { id: "INT-1024", name: "Zendesk Ticket Mirror", type: "Pull", category: "Support", status: "Inactive", updated: "2 weeks ago", contact: "test1@mail.com" },
-  { id: "INT-1019", name: "Daily Audit File Drop", type: "File", category: "Finance", status: "Active", updated: "2 weeks ago", contact: "test2@mail.com" },
+  { id: "INT-1042", name: "Salesforce - HTTP", entity: "Booking", integrationType: "Push Integration", triggerType: "Change", status: "Active", actionType: "HTTP Service" },
+  { id: "INT-1041", name: "Optimo Test Salesforce", entity: "Booking", integrationType: "Push Integration", triggerType: "Change", status: "Active", actionType: "HTTP Service External" },
+  { id: "INT-1039", name: "Salesforce_Credentials", entity: "Booking", integrationType: "Push Integration", triggerType: "Change", status: "Active", actionType: "HTTP Service External" },
+  { id: "INT-1037", name: "Salesforce_HTTP", entity: "Booking", integrationType: "Push Integration", triggerType: "CreateOrChange", status: "Active", actionType: "HTTP Service" },
+  { id: "INT-1035", name: "FTP check", entity: "Booking", integrationType: "Push Integration", triggerType: "CreateOrChange", status: "Active", actionType: "FTP" },
+  { id: "INT-1031", name: "Check Booking", entity: "Booking", integrationType: "Push Integration", triggerType: "CreateOrChange", status: "Active", actionType: "HTTP Service External" },
+  { id: "INT-1028", name: "Optimo_Salesforce_Credentials", entity: "Documents", integrationType: "Push Integration", triggerType: "CreateOrChange", status: "Active", actionType: "HTTP Service" },
+  { id: "INT-1024", name: "Booking Get", entity: "Booking", integrationType: "Push Integration", triggerType: "Change", status: "Active", actionType: "HTTP Service External" },
+  { id: "INT-1019", name: "Guest Document Upload", entity: "Documents", integrationType: "Document Integration", triggerType: "Create", status: "Inactive", actionType: "SFTP" },
 ];
 
 const StatusBadge = ({ status }: { status: Status }) => {
-  const map = {
-    Active: { cls: "bg-success/10 text-success border-success/20", Icon: CheckCircle2 },
-    Inactive: { cls: "bg-muted text-muted-foreground border-border", Icon: PauseCircle },
-    Error: { cls: "bg-destructive/10 text-destructive border-destructive/20", Icon: AlertCircle },
-  } as const;
-  const { cls, Icon } = map[status];
+  const cls = {
+    Active: "bg-success/10 text-success border-success/30",
+    Inactive: "bg-muted text-muted-foreground border-border",
+    Error: "bg-destructive/10 text-destructive border-destructive/30",
+  }[status];
   return (
-    <span className={cn("inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border", cls)}>
-      <Icon className="h-3 w-3" />
+    <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border", cls)}>
       {status}
     </span>
   );
 };
 
-const TypePill = ({ type }: { type: Row["type"] }) => {
-  const cls = {
-    Push: "bg-accent text-accent-foreground",
-    Pull: "bg-info/10 text-info",
-    File: "bg-primary/15 text-primary-foreground/90",
-    Document: "bg-muted text-foreground",
-  }[type];
-  return <span className={cn("inline-flex px-2 py-0.5 rounded text-xs font-medium", cls)}>{type}</span>;
-};
+
+
 
 function ConfigurationsListPage() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<Status | "All">("All");
-  const [typeFilter, setTypeFilter] = useState<Row["type"] | "All">("All");
+  const [typeFilter, setTypeFilter] = useState<IntegrationType | "All">("All");
   const [showFilter, setShowFilter] = useState(false);
   const [showStatus, setShowStatus] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -90,7 +79,7 @@ function ConfigurationsListPage() {
     return ROWS.filter(
       (r) =>
         (statusFilter === "All" || r.status === statusFilter) &&
-        (typeFilter === "All" || r.type === typeFilter) &&
+        (typeFilter === "All" || r.integrationType === typeFilter) &&
         (query === "" || r.name.toLowerCase().includes(query.toLowerCase()) || r.id.includes(query)),
     );
   }, [query, statusFilter, typeFilter]);
@@ -205,7 +194,7 @@ function ConfigurationsListPage() {
             </button>
             {showFilter && (
               <div className="absolute right-0 mt-2 w-44 rounded-md border border-border bg-popover shadow-lg z-20 py-1 animate-in fade-in-0 zoom-in-95">
-                {(["All", "Push", "Pull", "File", "Document"] as const).map((opt) => (
+                {(["All", "Push Integration", "Pull Integration", "File Integration", "Document Integration"] as const).map((opt) => (
                   <button
                     key={opt}
                     onClick={() => {
@@ -263,59 +252,48 @@ function ConfigurationsListPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground bg-muted/50">
+                <th className="px-5 py-3 font-medium w-10">
+                  <input type="checkbox" className="h-4 w-4 rounded border-input accent-primary" />
+                </th>
                 <th className="px-5 py-3 font-medium">
                   <button className="inline-flex items-center gap-1 hover:text-foreground">
-                    Integration Name <ArrowUpDown className="h-3 w-3" />
+                    Name <ArrowUpDown className="h-3 w-3" />
                   </button>
                 </th>
-                <th className="px-5 py-3 font-medium">Type</th>
-                <th className="px-5 py-3 font-medium">Category</th>
+                <th className="px-5 py-3 font-medium">Entity</th>
+                <th className="px-5 py-3 font-medium">Integration Type</th>
+                <th className="px-5 py-3 font-medium">Trigger Type</th>
                 <th className="px-5 py-3 font-medium">Status</th>
-                <th className="px-5 py-3 font-medium">Last Updated</th>
-                <th className="px-5 py-3 font-medium">Point of Contact</th>
-                <th className="px-5 py-3 font-medium text-right">Actions</th>
+                <th className="px-5 py-3 font-medium">Action Type</th>
+                <th className="px-5 py-3 font-medium w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {visible.map((r) => (
                 <tr key={r.id} className="hover:bg-muted/40 transition-colors group">
                   <td className="px-5 py-3.5">
-                    <div className="font-medium text-foreground">{r.name}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{r.id}</div>
+                    <input type="checkbox" className="h-4 w-4 rounded border-input accent-primary" />
                   </td>
-                  <td className="px-5 py-3.5"><TypePill type={r.type} /></td>
-                  <td className="px-5 py-3.5 text-foreground">{r.category}</td>
+                  <td className="px-5 py-3.5">
+                    <button className="font-medium text-primary hover:underline text-left">
+                      {r.name}
+                    </button>
+                  </td>
+                  <td className="px-5 py-3.5 text-foreground">{r.entity}</td>
+                  <td className="px-5 py-3.5 text-foreground">{r.integrationType}</td>
+                  <td className="px-5 py-3.5 text-foreground">{r.triggerType}</td>
                   <td className="px-5 py-3.5"><StatusBadge status={r.status} /></td>
-                  <td className="px-5 py-3.5 text-muted-foreground">{r.updated}</td>
+                  <td className="px-5 py-3.5 text-foreground">{r.actionType}</td>
                   <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-[10px] font-semibold">
-                        {r.contact.slice(0, 2).toUpperCase()}
-                      </div>
-                      <span className="text-muted-foreground">{r.contact}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center justify-end gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-                      <button className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center" title="View">
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                      <button className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center" title="Edit">
-                        <Pencil className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                      <button className="h-8 w-8 rounded-md hover:bg-destructive/10 flex items-center justify-center" title="Delete">
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </button>
-                      <button className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center">
-                        <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                    </div>
+                    <button className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center">
+                      <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                    </button>
                   </td>
                 </tr>
               ))}
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-16 text-center">
+                  <td colSpan={8} className="px-5 py-16 text-center">
                     <div className="inline-flex flex-col items-center gap-2">
                       <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
                         <Search className="h-5 w-5 text-muted-foreground" />
