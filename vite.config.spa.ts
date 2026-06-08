@@ -6,6 +6,9 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), tsconfigPaths()],
+  define: {
+    "import.meta.env.VITE_SPA_BUILD": JSON.stringify("true"),
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

@@ -613,16 +613,375 @@ interface MapRow { id: string; source: string; target: string; type: string }
 const SOURCE_FIELDS = ["booking.id", "booking.guestName", "booking.checkIn", "booking.checkOut", "booking.total", "booking.status", "contact.email", "contact.phone", "contact.name"];
 const TARGET_FIELDS = ["id", "guest_name", "check_in_date", "check_out_date", "total_amount", "status", "email", "phone", "full_name"];
 
+type SavedIntegration = {
+  id: string;
+  name: string;
+  type: IntType;
+  isActive: boolean;
+  contact: string;
+  description: string;
+  notes: string;
+  entityType: string;
+  trigger: string;
+  maxAttempts: number;
+  errorEmail: string;
+  nextIntegration: string;
+  query: string;
+  sameAsCalling: boolean;
+  action: string;
+  pullApiUrl: string;
+  httpDestinations: HttpForm[];
+  ftp: FtpForm;
+  rows: MapRow[];
+  completedSteps: number;
+};
+
+function SavedParentStepper({
+  si,
+  index,
+  expanded,
+  activeStep,
+  reviewMode,
+  isLastParent,
+  onToggleExpand,
+  onEditStep,
+  onNavigateStep,
+  onUpdate,
+  onUpdateRow,
+  onNextParent,
+  onFinishChain,
+}: {
+  si: SavedIntegration;
+  index: number;
+  expanded: boolean;
+  activeStep: number | null;
+  reviewMode?: boolean;
+  isLastParent?: boolean;
+  onToggleExpand: () => void;
+  onEditStep: (step: number) => void;
+  onNavigateStep: (step: number) => void;
+  onUpdate: (patch: Partial<SavedIntegration>) => void;
+  onUpdateRow: (rowId: string, patch: Partial<MapRow>) => void;
+  onNextParent?: () => void;
+  onFinishChain?: () => void;
+}) {
+  const hasConfig = si.type === "Push" || si.type === "Pull";
+  const isPush = si.type === "Push";
+  const Sx = hasConfig ? { general: 1, config: 2, dest: 3, map: 4 } : { general: 1, config: 0, dest: 2, map: 3 };
+  const steps = hasConfig ? [Sx.general, Sx.config, Sx.dest, Sx.map] : [Sx.general, Sx.dest, Sx.map];
+  const mappedCount = si.rows.filter((r) => r.source && r.target).length;
+  const stepIndex = activeStep !== null ? steps.indexOf(activeStep) : -1;
+
+  const goNext = () => {
+    if (stepIndex >= 0 && stepIndex < steps.length - 1) {
+      onNavigateStep(steps[stepIndex + 1]);
+    }
+  };
+
+  const goBack = () => {
+    if (stepIndex > 0) {
+      onNavigateStep(steps[stepIndex - 1]);
+    }
+  };
+
+  const StepFooter = ({ showBack, showNext, lastStep }: { showBack?: boolean; showNext?: boolean; lastStep?: boolean }) => (
+    <div className="mt-6 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        {showBack && (
+          <Button variant="outline" onClick={goBack}>
+            <ChevronRight className="h-4 w-4 rotate-180" /> Back
+          </Button>
+        )}
+        {lastStep && !reviewMode && (
+          <span className="text-xs text-muted-foreground">
+            Parent is saved. Complete the child integration below to submit the full chain.
+          </span>
+        )}
+        {lastStep && reviewMode && !isLastParent && (
+          <span className="text-xs text-muted-foreground">
+            Review this parent, then continue to the next parent in the chain.
+          </span>
+        )}
+      </div>
+      {showNext && (
+        <Button onClick={goNext}>
+          Next <ChevronRight className="h-4 w-4" />
+        </Button>
+      )}
+      {lastStep && reviewMode && isLastParent && onFinishChain && (
+        <Button onClick={onFinishChain}>
+          <Check className="h-4 w-4" />
+          Finish & Go to List
+        </Button>
+      )}
+      {lastStep && reviewMode && !isLastParent && onNextParent && (
+        <Button onClick={onNextParent}>
+          Next Parent <ChevronRight className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border bg-card shadow-[var(--shadow-soft)] overflow-hidden transition-colors",
+        expanded ? "border-primary/40 ring-1 ring-primary/20" : "border-border",
+      )}
+    >
+      <button
+        type="button"
+        onClick={onToggleExpand}
+        className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-muted/30 transition-colors"
+      >
+        <div className="h-9 w-9 rounded-full bg-success text-success-foreground flex items-center justify-center shrink-0">
+          <Check className="h-4 w-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Parent {index + 1}
+            </span>
+            <span className="font-semibold text-foreground truncate">{si.name}</span>
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            {si.id} · {si.type} · {si.action}
+          </div>
+        </div>
+        <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform", expanded && "rotate-180")} />
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-4 space-y-4 border-t border-border bg-muted/10">
+          <SectionCard
+            index={Sx.general}
+            title="General Details"
+            subtitle="Saved parent integration identity."
+            status="complete"
+            isOpen={activeStep === Sx.general}
+            onEdit={() => onEditStep(Sx.general)}
+            summary={
+              <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
+                <div><dt className="text-xs text-muted-foreground">Name</dt><dd className="font-medium text-foreground">{si.name}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Type</dt><dd className="font-medium text-foreground">{si.type}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Contact</dt><dd className="font-medium text-foreground">{si.contact}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Status</dt><dd className="font-medium text-foreground">{si.isActive ? "Active" : "Inactive"}</dd></div>
+              </dl>
+            }
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
+              <div>
+                <Label required>Integration Name</Label>
+                <Input value={si.name} onChange={(e) => onUpdate({ name: e.target.value })} />
+              </div>
+              <div>
+                <Label>Integration Type</Label>
+                <div className="h-10 px-3 rounded-md border border-input bg-muted/30 text-sm flex items-center font-medium">{si.type}</div>
+              </div>
+              <div>
+                <Label required>Point of Contact</Label>
+                <SearchableSelect value={si.contact} onChange={(v) => onUpdate({ contact: v })} options={CONTACTS} placeholder="Select contact" />
+              </div>
+              <div className="md:col-span-2 flex items-center justify-between rounded-md border border-border bg-muted/30 px-4 py-3">
+                <div>
+                  <div className="text-sm font-medium text-foreground">Is Active</div>
+                  <div className="text-xs text-muted-foreground">Inactive integrations will not be triggered by events.</div>
+                </div>
+                <Toggle checked={si.isActive} onChange={(v) => onUpdate({ isActive: v })} />
+              </div>
+              <div className="md:col-span-2">
+                <Label>Description</Label>
+                <TextArea value={si.description} onChange={(e) => onUpdate({ description: e.target.value })} placeholder="What does this integration do?" />
+              </div>
+              <div className="md:col-span-2">
+                <Label>Notes</Label>
+                <TextArea value={si.notes} onChange={(e) => onUpdate({ notes: e.target.value })} placeholder="Internal notes…" />
+              </div>
+            </div>
+            <StepFooter showNext={hasConfig || steps.length > 1} />
+          </SectionCard>
+
+          {hasConfig && (
+            <SectionCard
+              index={Sx.config}
+              title="Configuration"
+              subtitle={isPush ? "Define when and how this push integration fires." : "Configure entity types and trigger settings"}
+              status="complete"
+              isOpen={activeStep === Sx.config}
+              onEdit={() => onEditStep(Sx.config)}
+              summary={
+                isPush ? (
+                  <dl className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-2 text-sm">
+                    <div><dt className="text-xs text-muted-foreground">Entity</dt><dd className="font-medium text-foreground">{si.entityType || "—"}</dd></div>
+                    <div><dt className="text-xs text-muted-foreground">Trigger</dt><dd className="font-medium text-foreground">{si.trigger || "—"}</dd></div>
+                    <div><dt className="text-xs text-muted-foreground">Max Attempts</dt><dd className="font-medium text-foreground">{si.maxAttempts}</dd></div>
+                    <div><dt className="text-xs text-muted-foreground">Error Email</dt><dd className="font-medium text-foreground">{si.errorEmail || "—"}</dd></div>
+                  </dl>
+                ) : (
+                  <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+                    <div><dt className="text-xs text-muted-foreground">Max Attempts</dt><dd className="font-medium text-foreground">{si.maxAttempts}</dd></div>
+                    <div><dt className="text-xs text-muted-foreground">Error Email</dt><dd className="font-medium text-foreground">{si.errorEmail || "—"}</dd></div>
+                    <div><dt className="text-xs text-muted-foreground">Next Integration</dt><dd className="font-medium text-foreground">{si.nextIntegration || "—"}</dd></div>
+                  </dl>
+                )
+              }
+            >
+              {isPush ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
+                  <div>
+                    <Label required>Entity Type</Label>
+                    <Select value={si.entityType} onChange={(v) => onUpdate({ entityType: v })} options={ENTITY_TYPES} placeholder="Select entity" />
+                  </div>
+                  <div>
+                    <Label required>Trigger Type</Label>
+                    <Select value={si.trigger} onChange={(v) => onUpdate({ trigger: v })} options={TRIGGERS} placeholder="Select trigger" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Checkbox checked={si.sameAsCalling} onChange={(v) => onUpdate({ sameAsCalling: v })} label="Same as Calling Entity Type" />
+                  </div>
+                  <div>
+                    <Label>Max Re-Execution Attempts</Label>
+                    <Input type="number" min={0} value={si.maxAttempts} onChange={(e) => onUpdate({ maxAttempts: Number(e.target.value) })} />
+                  </div>
+                  <div>
+                    <Label required>Error Log Email</Label>
+                    <Input type="email" value={si.errorEmail} onChange={(e) => onUpdate({ errorEmail: e.target.value })} placeholder="errors@company.com" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label>Select Query</Label>
+                    <TextArea value={si.query} onChange={(e) => onUpdate({ query: e.target.value })} className="font-mono min-h-[120px]" spellCheck={false} />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
+                  <div>
+                    <Label>Max Re-Execution Attempts</Label>
+                    <Input type="number" min={0} value={si.maxAttempts} onChange={(e) => onUpdate({ maxAttempts: Number(e.target.value) })} />
+                  </div>
+                  <div>
+                    <Label>Error Log Email</Label>
+                    <Input type="email" value={si.errorEmail} onChange={(e) => onUpdate({ errorEmail: e.target.value })} placeholder="errors@company.com" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label>Next Integration</Label>
+                    <Select value={si.nextIntegration} onChange={(v) => onUpdate({ nextIntegration: v })} options={EXISTING_INTEGRATIONS} placeholder="Select next integration" />
+                  </div>
+                </div>
+              )}
+              <StepFooter showBack showNext />
+            </SectionCard>
+          )}
+
+          <SectionCard
+            index={Sx.dest}
+            title={isPush ? "Destination Configuration" : "Destination"}
+            subtitle={isPush ? "Where Optimo will deliver the payload." : "Configure API URL for pulling data"}
+            status="complete"
+            isOpen={activeStep === Sx.dest}
+            onEdit={() => onEditStep(Sx.dest)}
+            summary={
+              isPush ? (
+                <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+                  <div><dt className="text-xs text-muted-foreground">Action</dt><dd className="font-medium text-foreground">{si.action}</dd></div>
+                  {si.httpDestinations[0]?.baseUrl && (
+                    <div><dt className="text-xs text-muted-foreground">Base URL</dt><dd className="font-medium text-foreground truncate">{si.httpDestinations[0].baseUrl}</dd></div>
+                  )}
+                </dl>
+              ) : (
+                <dl className="grid grid-cols-1 gap-y-2 text-sm">
+                  <div><dt className="text-xs text-muted-foreground">API URL</dt><dd className="font-medium text-foreground">{si.pullApiUrl || "—"}</dd></div>
+                </dl>
+              )
+            }
+          >
+            {isPush ? (
+              <div className="mt-4 space-y-5">
+                <div className="max-w-md">
+                  <Label required>Integration Action</Label>
+                  <Select
+                    value={si.action === "—" ? "" : (si.action as typeof ACTIONS[number])}
+                    onChange={(v) => onUpdate({ action: v })}
+                    options={ACTIONS}
+                    placeholder="Select action"
+                  />
+                </div>
+                {si.action === "FTP" && (
+                  <FtpPanel form={si.ftp} set={(v) => onUpdate({ ftp: v })} />
+                )}
+                {(si.action === "HTTP Service" || si.action === "HTTP Service External") && si.httpDestinations[0] && (
+                  <HttpPanel
+                    form={si.httpDestinations[0]}
+                    set={(v) => onUpdate({ httpDestinations: [v, ...si.httpDestinations.slice(1)] })}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="mt-4">
+                <Label required>API URL</Label>
+                <Input
+                  value={si.pullApiUrl}
+                  onChange={(e) => onUpdate({ pullApiUrl: e.target.value })}
+                  placeholder="https://api.example.com/endpoint"
+                />
+              </div>
+            )}
+            <StepFooter showBack showNext />
+          </SectionCard>
+
+          <SectionCard
+            index={Sx.map}
+            title="Mapping"
+            subtitle="Map source fields to destination fields."
+            status="complete"
+            isOpen={activeStep === Sx.map}
+            onEdit={() => onEditStep(Sx.map)}
+            summary={
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{mappedCount}</span> field{mappedCount === 1 ? "" : "s"} mapped
+              </div>
+            }
+          >
+            <div className="mt-4 rounded-lg border border-border overflow-hidden">
+              <div className="grid grid-cols-[1fr_1fr_70px] bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground font-medium px-4 py-2.5">
+                <div>Source Field</div>
+                <div>Target Field</div>
+                <div>Type</div>
+              </div>
+              <div className="divide-y divide-border">
+                {si.rows.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-sm text-muted-foreground">No mappings saved.</div>
+                ) : (
+                  si.rows.map((row) => (
+                    <div key={row.id} className="grid grid-cols-[1fr_1fr_70px] items-center gap-2 px-4 py-2.5">
+                      <Select value={row.source} onChange={(v) => onUpdateRow(row.id, { source: v })} options={SOURCE_FIELDS} placeholder="Select source" />
+                      <Select value={row.target} onChange={(v) => onUpdateRow(row.id, { target: v })} options={TARGET_FIELDS} placeholder="Select target" />
+                      <span className="text-xs text-muted-foreground">{row.type}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            <StepFooter showBack lastStep />
+          </SectionCard>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─────────────── Main page ─────────────── */
 
 function NewIntegrationPage() {
   const { type: initialType } = Route.useSearch();
   const navigate = useNavigate();
+  const parentSectionRef = useRef<HTMLDivElement>(null);
 
   // Section state
   const [active, setActive] = useState(1);
   const [completed, setCompleted] = useState<Set<number>>(new Set());
   const [attempted, setAttempted] = useState<Set<number>>(new Set());
+  const [parentReviewMode, setParentReviewMode] = useState(false);
+  const [submittedChild, setSubmittedChild] = useState<SavedIntegration | null>(null);
 
   // Section 1
   const [name, setName] = useState("");
@@ -769,8 +1128,68 @@ function NewIntegrationPage() {
   const Sx = hasConfig ? { general: 1, config: 2, dest: 3, map: 4 } : { general: 1, config: 0, dest: 2, map: 3 };
 
   // Saved integrations summary list (for "+ Add Next Integration")
-  type SavedIntegration = { id: string; name: string; type: IntType; action: string };
   const [savedIntegrations, setSavedIntegrations] = useState<SavedIntegration[]>([]);
+  const [expandedSavedId, setExpandedSavedId] = useState<string | null>(null);
+  const [savedActiveStep, setSavedActiveStep] = useState<{ parentId: string; step: number } | null>(null);
+
+  const snapshotCurrentIntegration = (id: string): SavedIntegration => ({
+    id,
+    name: name.trim(),
+    type,
+    isActive,
+    contact,
+    description,
+    notes,
+    entityType,
+    trigger,
+    maxAttempts,
+    errorEmail,
+    nextIntegration,
+    query,
+    sameAsCalling,
+    action: action || "—",
+    pullApiUrl,
+    httpDestinations: httpDestinations.map((h) => ({ ...h })),
+    ftp: { ...ftp },
+    rows: rows.map((r) => ({ ...r })),
+    completedSteps: completed.size,
+  });
+
+  const toggleSavedExpand = (id: string) => {
+    setExpandedSavedId((prev) => {
+      if (prev === id) {
+        setSavedActiveStep(null);
+        return null;
+      }
+      return id;
+    });
+  };
+
+  const handleEditSavedStep = (parentId: string, step: number) => {
+    setExpandedSavedId(parentId);
+    setSavedActiveStep((prev) =>
+      prev?.parentId === parentId && prev.step === step ? null : { parentId, step },
+    );
+  };
+
+  const handleNavigateSavedStep = (parentId: string, step: number) => {
+    setExpandedSavedId(parentId);
+    setSavedActiveStep({ parentId, step });
+  };
+
+  const updateSavedIntegration = (id: string, patch: Partial<SavedIntegration>) => {
+    setSavedIntegrations((list) => list.map((si) => (si.id === id ? { ...si, ...patch } : si)));
+  };
+
+  const updateSavedRow = (parentId: string, rowId: string, patch: Partial<MapRow>) => {
+    setSavedIntegrations((list) =>
+      list.map((si) =>
+        si.id === parentId
+          ? { ...si, rows: si.rows.map((r) => (r.id === rowId ? { ...r, ...patch } : r)) }
+          : si,
+      ),
+    );
+  };
 
   const resetForm = () => {
     setName("");
@@ -802,19 +1221,61 @@ function NewIntegrationPage() {
       toast.error("Please complete General Details before adding another integration.");
       return;
     }
-    setSavedIntegrations((s) => [
-      ...s,
-      { id: `INT-${1000 + s.length + 1}`, name, type, action: action || "—" },
-    ]);
+    const id = `INT-${1000 + savedIntegrations.length + 1}`;
+    setSavedIntegrations((s) => [...s, snapshotCurrentIntegration(id)]);
+    setExpandedSavedId(null);
+    setSavedActiveStep(null);
     toast.success(`${name} saved`, { description: "Starting a new integration form." });
     resetForm();
   };
 
   const handleSubmit = () => {
-    toast.success("Integration created", {
-      description: `${name} has been saved and is ${isActive ? "active" : "inactive"}.`,
+    const childName = name.trim();
+
+    if (savedIntegrations.length === 0) {
+      toast.success("Integration created", {
+        description: `${childName} has been saved and is ${isActive ? "active" : "inactive"}.`,
+      });
+      navigate({ to: "/configurations", replace: true });
+      return;
+    }
+
+    const childSnapshot = snapshotCurrentIntegration(`INT-${1000 + savedIntegrations.length + 1}`);
+    setSubmittedChild(childSnapshot);
+    setParentReviewMode(true);
+    resetForm();
+
+    const firstParent = savedIntegrations[0];
+    setExpandedSavedId(firstParent.id);
+    setSavedActiveStep({ parentId: firstParent.id, step: 1 });
+
+    toast.success("Child integration submitted", {
+      description: `${childName} saved. Review parent steps to complete the chain.`,
     });
-    setTimeout(() => navigate({ to: "/configurations" }), 600);
+
+    requestAnimationFrame(() => {
+      parentSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const handleNextParent = (currentIndex: number) => {
+    const nextParent = savedIntegrations[currentIndex + 1];
+    if (!nextParent) return;
+    setExpandedSavedId(nextParent.id);
+    setSavedActiveStep({ parentId: nextParent.id, step: 1 });
+    requestAnimationFrame(() => {
+      parentSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const handleFinishChain = () => {
+    const parentNames = savedIntegrations.map((s) => s.name).filter(Boolean);
+    const childName = submittedChild?.name ?? "";
+    const allNames = [...parentNames, childName].filter(Boolean);
+    toast.success(`${allNames.length} integrations created`, {
+      description: `Saved chain: ${allNames.join(" → ")}.`,
+    });
+    navigate({ to: "/configurations", replace: true });
   };
 
   return (
@@ -854,38 +1315,64 @@ function NewIntegrationPage() {
 
           {/* Saved Integrations Summary */}
           {savedIntegrations.length > 0 && (
-            <div className="rounded-xl border border-border bg-card shadow-[var(--shadow-soft)] p-5 animate-fade-in">
+            <div
+              ref={parentSectionRef}
+              className="rounded-xl border border-border bg-card shadow-[var(--shadow-soft)] p-5 animate-fade-in"
+            >
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <div className="font-semibold text-foreground text-sm">
-                    Saved Integrations in this session
+                    {parentReviewMode ? "Review parent integrations" : "Saved parent integrations"}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    These will be submitted together when you finish.
+                    {parentReviewMode
+                      ? "Child submitted. Walk through each parent step with Next/Back, then finish on the last parent."
+                      : "Expand a parent to review steps with Next/Back. Finish the child form below to submit the full chain."}
                   </div>
                 </div>
                 <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20">
                   {savedIntegrations.length} saved
                 </span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {savedIntegrations.map((si) => (
-                  <div key={si.id} className="rounded-lg border border-border bg-muted/30 p-3 flex items-start gap-3">
-                    <div className="h-8 w-8 rounded-full bg-success text-success-foreground flex items-center justify-center shrink-0">
-                      <Check className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-foreground text-sm truncate">{si.name}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        {si.id} · {si.type}
-                      </div>
-                    </div>
+
+              {submittedChild && parentReviewMode && (
+                <div className="mb-4 flex items-center gap-3 rounded-lg border border-success/30 bg-success/5 px-4 py-3">
+                  <div className="h-8 w-8 rounded-full bg-success text-success-foreground flex items-center justify-center shrink-0">
+                    <Check className="h-4 w-4" />
                   </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-success">Child submitted</div>
+                    <div className="text-sm font-medium text-foreground truncate">{submittedChild.name}</div>
+                    <div className="text-xs text-muted-foreground">{submittedChild.id} · {submittedChild.type}</div>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {savedIntegrations.map((si, index) => (
+                  <SavedParentStepper
+                    key={si.id}
+                    si={si}
+                    index={index}
+                    expanded={expandedSavedId === si.id}
+                    activeStep={savedActiveStep?.parentId === si.id ? savedActiveStep.step : null}
+                    reviewMode={parentReviewMode}
+                    isLastParent={index === savedIntegrations.length - 1}
+                    onToggleExpand={() => toggleSavedExpand(si.id)}
+                    onEditStep={(step) => handleEditSavedStep(si.id, step)}
+                    onNavigateStep={(step) => handleNavigateSavedStep(si.id, step)}
+                    onUpdate={(patch) => updateSavedIntegration(si.id, patch)}
+                    onUpdateRow={(rowId, patch) => updateSavedRow(si.id, rowId, patch)}
+                    onNextParent={() => handleNextParent(index)}
+                    onFinishChain={handleFinishChain}
+                  />
                 ))}
               </div>
             </div>
           )}
 
+      {!parentReviewMode && (
+        <>
       {/* Header */}
       <div className="flex items-start gap-3">
         <Link
@@ -895,9 +1382,18 @@ function NewIntegrationPage() {
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Add New Integration</h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Add New Integration</h1>
+            {savedIntegrations.length > 0 && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                Child {savedIntegrations.length + 1} of {savedIntegrations.length + 1}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Complete each section in order. Sections will unlock as you progress.
+            {savedIntegrations.length > 0
+              ? "Complete this child integration. Submitting redirects you to review parent steps."
+              : "Complete each section in order. Sections will unlock as you progress."}
           </p>
         </div>
         <div className="hidden md:flex items-center gap-2 text-sm">
@@ -1400,12 +1896,21 @@ function NewIntegrationPage() {
               </span>
             )}
           </div>
-          <Button onClick={() => { setAttempted((s) => new Set([...s, 4])); if (section4Valid) handleSubmit(); }}>
+          <Button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              setAttempted((s) => new Set([...s, 4]));
+              if (section4Valid) handleSubmit();
+            }}
+          >
             <Check className="h-4 w-4" />
-            Submit Integration
+            {savedIntegrations.length > 0 ? "Submit Child Integration" : "Submit Integration"}
           </Button>
         </div>
       </SectionCard>
+        </>
+      )}
         </div>
       </div>
     </div>

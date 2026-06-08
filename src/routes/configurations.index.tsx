@@ -21,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AddIntegrationModal } from "@/components/integrations/AddIntegrationModal";
+import { IntegrationConfigLogo } from "@/components/integrations/IntegrationConfigLogo";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 
@@ -345,11 +346,14 @@ function ConfigurationsListPage() {
 
       {/* Title */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Integration Configuration</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage push, pull, file, and document integrations connecting Optimo to external systems.
-          </p>
+        <div className="flex items-start gap-4">
+          <IntegrationConfigLogo />
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Integration Configuration</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage push, pull, file, and document integrations connecting Optimo to external systems.
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={() => setModalOpen(true)} className="shadow-sm">
