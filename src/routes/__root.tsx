@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import { Toaster } from "@/components/ui/sonner";
 
 /** True only for Vercel/static SPA build (vite.config.spa.ts). */
 const isSpaBuild = import.meta.env.VITE_SPA_BUILD === "true";
@@ -77,6 +78,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      <Toaster richColors position="top-right" />
     </QueryClientProvider>
   );
 }

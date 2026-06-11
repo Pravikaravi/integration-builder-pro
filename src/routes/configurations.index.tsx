@@ -22,7 +22,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AddIntegrationModal } from "@/components/integrations/AddIntegrationModal";
 import { IntegrationConfigLogo } from "@/components/integrations/IntegrationConfigLogo";
-import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/configurations/")({
@@ -313,7 +312,6 @@ function ConfigurationsListPage() {
 
   return (
     <div className="min-h-screen bg-muted/40">
-      <Toaster richColors position="top-right" />
       {/* Top Header */}
       <header className="h-16 sticky top-0 z-30 bg-card/90 backdrop-blur border-b border-border">
         <div className="max-w-[1400px] mx-auto h-full flex items-center justify-between px-6">

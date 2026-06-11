@@ -19,7 +19,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { Toaster } from "@/components/ui/sonner";
 
 type IntType = "Push" | "Pull" | "File" | "Document";
 
@@ -1280,7 +1279,6 @@ function NewIntegrationPage() {
 
   return (
     <div className="min-h-screen bg-muted/40">
-      <Toaster richColors position="top-right" />
       {/* Top Header */}
       <header className="h-16 sticky top-0 z-30 bg-card/90 backdrop-blur border-b border-border">
         <div className="max-w-[1200px] mx-auto h-full flex items-center justify-between px-6">
